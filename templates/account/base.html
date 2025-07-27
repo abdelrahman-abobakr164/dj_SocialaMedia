@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Sociala - {% block title %}{% endblock title %}</title>
+    <meta name="description" content="Sociala, social media, social network, social platform">
+    <meta name='author' content="Abdelrahman Abobakr">
+    {% block meta_head %}
+    
+    {% endblock meta_head %}
+    <meta property="og:site_name" content="Sociala">
+    <meta property="og:type" content="website"> 
+    <link rel="stylesheet" href="{% static 'css/themify-icons.css' %}">
+    <link rel="stylesheet" href="{% static 'css/feather.css' %}">
+    <!-- Favicon icon -->
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon.png' %}">
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}"> 
+</head>
+
+<body class="color-theme-blue">
+
+    <div class="preloader"></div>
+
+    <div class="main-wrap">
+
+        {% if messages %}
+            <div style='margin-bottom: -78px; margin-left: 650px; margin-right: 60px; '>
+            {% for msg in messages %}
+                {% if msg.level == 40 %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{msg}}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                    </button>
+                </div>
+                {% else %}
+                <div  class="alert alert-{{msg.tags}} alert-dismissible fade show"  role="alert">
+                    {{msg}}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                    </button>
+                </div>
+                {% endif %}
+            {% endfor %}
+            </div>
+        {% endif %}
+        
+        {% block body %}
+        {% endblock body %}
+
+    </div>
+
+
+
+   <script src="{% static 'js/plugin.js' %}"></script>
+   <script src="{% static 'js/scripts.js' %}"></script>
+</body>
+
+</html>

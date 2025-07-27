@@ -1,0 +1,61 @@
+<nav class="navigation scroll-bar">
+    <div class="container ps-0 pe-0">
+        <div class="p-3 bg-white theme-dark-bg">
+            <ul class="mt-3">
+                <li class="mt-1 mb-1"><a href='{% url "conversations" %}' class="bg-white theme-dark-bg p-2 w-100 border-0 rounded-3 text-dark {% if request.path == '/conversations/' %} text-grey-900 {% else %}text-grey-600 {% endif %} text-left fw-600 font-xsss d-flex align-items-center"><i class="feather-mail font-md btn-round-sm me-2 p-0"></i> Inbox <span class="ms-auto font-xssss text-grey-500">{{inbox.count}}</span></a></li>
+            </ul>
+            <hr>
+
+            <ul class="mt-3">
+                {% for msg in UserChats %}
+                    <li class="mt-1 mb-1">
+                        <a {% if request.path != msg.get_absolute_url %} href='{% url "conversation" msg.pk %}' {% endif %} class="{% if request.path == msg.get_absolute_url %}bg-lightblue theme-light-bg {% else %}bg-white theme-dark-bg {% endif %}   p-2 w-100 border-0 rounded-3 text-dark text-grey-600 text-left fw-600 font-xsss d-flex align-items-center">
+                            {% if msg.is_group %}
+                                {% if msg.group_image %}
+                                    <img style='border-radius: 50%' src="{{ msg.group_image.url }}" alt="user" class="w35 me-2">
+                                {% else %}
+                                    <i class="feather-users text-dark font-xl ms-1 rounded-circle"></i>
+                                {% endif %}
+                                    <h5 class='font-xssss text-grey-900 mb-0 mt-0 fw-700 '>{{msg.group_name}}</h5>
+                                    
+                            {% elif request.user == msg.participants.first %}
+                                <img style='border-radius: 50px' src="{{ msg.participants.last.img.url }}" alt="user" class="w35 me-2">
+                                <h6 class="font-xssss text-grey-{% if request.path == msg.get_absolute_url %}900  {% else %}500 {% endif %} mb-0 mt-0 fw-700">{{msg.participants.last.username}}
+                                    {% if msg.participants.last.verified %}
+                                        <i class="feather-check bg-success font-xsss" style='border-radius:50px; '></i>
+                                    {% endif %}
+
+                                    {% if msg.participants.last.is_admin %}
+                                        <i class="feather-check font-xsss" style='background-color: #FDD017; border-radius:50px; '></i>
+                                    {% endif %}
+                                </h6>
+                            {% else %}
+                                <img style='border-radius: 50px' src="{{ msg.participants.first.img.url }}" alt="user" class="w35 me-2">
+                                <h6 class="font-xssss text-grey-{% if request.path == msg.get_absolute_url %}900 {% else %}500 {% endif %} mb-0 mt-0 fw-700">{{msg.participants.first.username}}
+                                    {% if msg.participants.first.verified %}
+                                        <i class="feather-check bg-success font-xsss" style='border-radius:50px;'></i>
+                                    {% endif %}
+                                    {% if msg.participants.first.is_admin %}
+                                        <i class="feather-check font-xsss" style='background-color: #FDD017; border-radius:50px; '></i>
+                                    {% endif %}
+                                </h6>
+                            {% endif %}
+                            
+                            {% if msg.unread_count %}
+                                <span class="ms-auto font-xssss text-grey-500">{{msg.unread_count}}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+
+            <ul class="mt-3">   
+                <li class="mt-1 mb-1">
+                    <a href="{% url 'block' %}" class="bg-white theme-dark-bg p-2 w-100 border-0 rounded-3 text-dark text-grey-{% if request.path == '/conversations/block-chats' %}900 {% else %}600 {% endif %} text-left fw-600 font-xsss d-flex align-items-center"><i class="ti-na font-sm btn-round-sm me-2 p-0"></i> BLock 
+                        <span class="ms-auto font-xssss text-grey-500">{{block_chats.count}}</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>

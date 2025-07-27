@@ -1,0 +1,21 @@
+{% extends 'account/base.html' %}
+{% load static %}
+{% block title %}
+Verify Your Email Address
+{% endblock title %}
+
+{% block body %}
+
+    <div class="row">
+        <div class="col-xl-5 d-none d-xl-block p-0 vh-100 bg-image-cover bg-no-repeat" style="background-image: url({% static 'images/login-bg-2.jpg' %});"></div>
+        <div class="col-xl-7 vh-100 align-items-center d-flex bg-white rounded-3 overflow-hidden">
+            <div class="card shadow-none border-0 ms-auto me-auto login-card">
+                <div class="card-body rounded-0 text-left">
+                    <h2 class="fw-700 display1-size display2-md-size mb-4">Verify Your Email Address</h2>                        
+                    We have sent an email to you for verification. Follow the link provided to finalize the signup process. If you do not see the verification email in your main inbox, check your spam folder. Please contact us if you do not receive the verification email within a few minutes.
+                </div>
+            </div> 
+        </div>
+    </div>
+
+{% endblock body %}

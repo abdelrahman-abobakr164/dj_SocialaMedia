@@ -1,0 +1,30 @@
+    <!-- navigation left -->
+    <nav class="navigation scroll-bar">
+        <div class="container ps-0 pe-0">
+            <div class="nav-content">
+                <div class="nav-wrap bg-white bg-transparent-card rounded-xxl shadow-xss pt-3 pb-1 mb-2">
+                    <div class="nav-caption fw-600 font-xssss text-grey-500"><span>More </span>Pages</div>
+                    <ul class="mb-3">
+                        <li><a href="{% url 'conversations' %}" class="nav-content-bttn open-font"><i class="font-xl text-current feather-inbox me-3"></i><span>Conversations</span>
+                            {% if inbox.count >= 1 %}
+                                <span class="circle-count bg-warning mt-1">{{inbox.count}}</span>
+                            {% endif %}
+                            </a>
+                        </li>
+                        <li><a href="{% url 'events' %}" class="nav-content-bttn open-font"><i class="font-xl text-current feather-map-pin me-3"></i><span>Event</span></a></li>
+                        <li><a href="{% url 'notifications' %}" class="nav-content-bttn open-font"><i class="font-xl text-current feather-bell me-3"></i><span>Notifications</span>{% if alerts.exists %} <span class="circle-count bg-warning mt-1">{{ alerts.count }}</span> {% endif %}</a></li>
+                        <li><a href="{% url 'pending-requests' %}" class="nav-content-bttn open-font"><i class="feather-user font-xl text-current me-3"></i><span>Pending Requests</span>{% if friends.exists %} <span class="circle-count bg-warning mt-1">{{ friends.count }}</span> {% endif %}</a></li>
+                    </ul>
+                </div>
+                <div class="nav-wrap bg-white bg-transparent-card rounded-xxl shadow-xss pt-3 pb-1">
+                    <div class="nav-caption fw-600 font-xssss text-grey-500"><span></span> Account</div>
+                    <ul class="mb-1">
+                        <li class="logo d-none d-xl-block d-lg-block"></li>
+                        <li><a href="{% url 'settings' %}" class="nav-content-bttn open-font h-auto pt-2 pb-2"><i class="font-sm feather-settings me-3 text-grey-500"></i><span>Settings</span></a></li>
+                        <li><a href="{% url 'account_logout' %}" class="nav-content-bttn open-font h-auto pt-2 pb-2"><i class="font-sm feather-lock me-3 text-grey-500"></i> <span>Logout</span></a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <!-- navigation left -->

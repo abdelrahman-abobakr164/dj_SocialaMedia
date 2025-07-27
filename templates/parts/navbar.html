@@ -1,0 +1,183 @@
+{% load static %}
+<div class="nav-header bg-white shadow-xs border-0">
+    <div class="nav-top">
+        <a href="/"><i class="feather-zap text-success display1-size me-2 ms-0"></i><span class="d-inline-block fredoka-font ls-3 fw-600 text-current font-xxl logo-text mb-0">Sociala. </span> </a>
+        <a href="#" class="me-2 menu-search-icon mob-menu"><i class="feather-search text-grey-900 font-sm btn-round-md bg-greylight"></i></a>
+        <button class="nav-menu me-0 ms-2"></button>
+    </div>
+    
+    <form action="{% url 'search' %}" class="float-left header-search">
+        <div class="form-group mb-0 icon-input">
+            <i class="feather-search font-sm text-grey-400"></i>
+            <input type="search" name='username' placeholder="Search for usernames" class="bg-grey border-0 lh-32 pt-2 pb-2 ps-5 pe-3 font-xssss fw-500 rounded-xl w350 theme-dark-bg">
+        </div>
+    </form>
+
+    <a href="/" class="p-2 text-center ms-3 menu-icon center-menu-icon"><i class="feather-home font-lg {% if request.path == '/' %} alert-primary text-current {% else %}bg-greylight text-grey-500 {% endif %} btn-round-lg theme-dark-bg"></i></a>
+    <a href="{% url 'story:story_list' %}" class="p-2 text-center ms-0 menu-icon center-menu-icon"><i class="feather-zap font-lg {% if request.path == '/stories/' %} alert-primary text-current {% else %}bg-greylight text-grey-500{% endif %} btn-round-lg theme-dark-bg"></i></a>
+    <a href="{% url 'contact-us' %}" class="p-2 text-center ms-0 menu-icon center-menu-icon"><i class="ti-email font-lg {% if request.path == '/accounts/contact-us/' %} alert-primary text-current {% else %}bg-greylight text-grey-500 {% endif %} btn-round-lg theme-dark-bg"></i></a>
+
+    <a href="" class="p-2 text-center ms-auto menu-icon" id="dropdownMenu3" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-bs-toggle="dropdown">{% if alerts.exists %}<span class="dot-count bg-warning"></span>{% endif %}<i class="feather-bell font-xl text-current"></i></a>
+    <div class="dropdown-menu dropdown-menu-end p-4 rounded-3 border-0 shadow-lg" aria-labelledby="dropdownMenu3">
+        <div class="d-flex">
+            <a href="{% url 'notifications' %}"><h4 class="fw-700 font-xss mb-4">Notification ({{ alerts.count }})</h4></a>
+            {% if alerts.exists %}
+                <a href="{% url 'mark_all_as_read' %}"><h4 class="btn fw-700 font-xss mb-4 ms-4">Mark all as read</h4></a>
+            {% endif %}
+        </div>
+        {% for user in alerts|slice:'5' %}
+            <div class="card bg-transparent-card w-100 border-0 ps-5 mb-3">
+                
+                <a href="{% url 'profile' user.actor.slug %}"><img  style='border-radius: 50px' src="{{ user.actor.img.url }}" alt="user" class="w40 position-absolute left-0"></a>
+                <h5 class="font-xsss text-grey-900 mb-1 mt-0 fw-700 d-block">{{ user.actor.username }} <span class="text-grey-400 font-xsssss fw-600 float-right mt-1 ms-2"> {{ user.created_at|timesince }} ago </span></h5>
+                <h6 class="text-grey-500 fw-500 font-xssss lh-4">
+
+                    {% if user.ntype == 'New Follower' %}
+                        {{ user.actor.username }} Followed You
+                    {% elif user.ntype == 'Follow Accepted' %}
+                        {{ user.actor.username }} Accept Your Follow Request
+                    {% elif user.ntype == 'Follow Request' %}
+                        {{ user.actor.username }} Send You a {{ user.ntype }}
+                    {% elif user.ntype == 'Message' %}
+                        {% if user.content_object.conversation %}
+                            {% if user.content_object.content %}
+                                Message From {{user.actor.username}}
+                                <a style='color:black' href="{% url 'conversation' user.content_object.conversation.id %}" target="__blank">"{{user.content_object.content|truncatewords:2}}"</a>
+                            {% else %}
+                                {{user.actor.username}} 
+                                Send You an Image <a style='color:black' href="{% url 'conversation' user.content_object.conversation.id %}" target="__blank">See</a>
+                            {% endif %}
+                        {% else %}
+                        The Message is Deleted
+                        {% endif %}
+                            
+                    {% else %}
+                        {{ user.actor.username }} give you a
+                        {{ user.ntype }}
+                        {% if noti.content_object.caption %}
+                            <a style='color:black' href="{% url 'post-detail' user.object_id %}" target="__blank">{{noti.content_object.caption|truncatewords:2}}</a>
+                        {% elif noti.content_object.body %}
+                            <a style='color:black' href="{% url 'post-detail' user.object_id %}" target="__blank">{{noti.content_object.body|truncatewords:2}}</a>
+                        {% else %}
+                            On This<a style='color:black' href="{% url 'post-detail' user.object_id %}" target="__blank">Post</a>
+                        {% endif %}
+                        
+                    {% endif %}
+                    
+                    <a href='{% url "delete-notification" user.id %}' style='float:right' class='btn'>
+                        <i class="feather-trash text-danger font-sm"></i>
+                    </a>
+                </h6>
+                
+            </div>
+
+        {% endfor %}
+    </div>
+
+    <a href="#" class="p-2 text-center ms-3 menu-icon chat-active-btn">{% for c in UserChats %} {% if c.unread_count >= 1 %}<span class="dot-count bg-warning"></span>{% endif %} {% endfor %}<i class="feather-message-square font-xl text-current"></i></a>
+    <div class="p-2 text-center ms-3 position-relative dropdown-menu-icon menu-icon cursor-pointer">
+        <i class="feather-settings animation-spin d-inline-block font-xl text-current"></i>
+        <div class="dropdown-menu-settings switchcolor-wrap">
+            <h4 class="fw-700 font-sm mb-4">Settings</h4>
+            <h6 class="font-xssss text-grey-500 fw-700 mb-3 d-block">Choose Color Theme</h6>
+            <ul>
+                <li>
+                    <label class="item-radio item-content">
+                        <input type="radio" name="color-radio" value="red" checked=""><i class="ti-check"></i>
+                        <span class="circle-color bg-red" style="background-color: #ff3b30;"></span>
+                    </label>
+                </li>
+                <li>
+                    <label class="item-radio item-content">
+                        <input type="radio" name="color-radio" value="green"><i class="ti-check"></i>
+                        <span class="circle-color bg-green" style="background-color: #4cd964;"></span>
+                    </label>
+                </li>
+                <li>
+                    <label class="item-radio item-content">
+                        <input type="radio" name="color-radio" value="blue" checked=""><i class="ti-check"></i>
+                        <span class="circle-color bg-blue" style="background-color: #132977;"></span>
+                    </label>
+                </li>
+                <li>
+                    <label class="item-radio item-content">
+                        <input type="radio" name="color-radio" value="pink"><i class="ti-check"></i>
+                        <span class="circle-color bg-pink" style="background-color: #ff2d55;"></span>
+                    </label>
+                </li>
+                <li>
+                    <label class="item-radio item-content">
+                        <input type="radio" name="color-radio" value="yellow"><i class="ti-check"></i>
+                        <span class="circle-color bg-yellow" style="background-color: #ffcc00;"></span>
+                    </label>
+                </li>
+                <li>
+                    <label class="item-radio item-content">
+                        <input type="radio" name="color-radio" value="orange"><i class="ti-check"></i>
+                        <span class="circle-color bg-orange" style="background-color: #ff9500;"></span>
+                    </label>
+                </li>
+                <li>
+                    <label class="item-radio item-content">
+                        <input type="radio" name="color-radio" value="gray"><i class="ti-check"></i>
+                        <span class="circle-color bg-gray" style="background-color: #8e8e93;"></span>
+                    </label>
+                </li>
+
+                <li>
+                    <label class="item-radio item-content">
+                        <input type="radio" name="color-radio" value="brown"><i class="ti-check"></i>
+                        <span class="circle-color bg-brown" style="background-color: #D2691E;"></span>
+                    </label>
+                </li>
+                <li>
+                    <label class="item-radio item-content">
+                        <input type="radio" name="color-radio" value="darkgreen"><i class="ti-check"></i>
+                        <span class="circle-color bg-darkgreen" style="background-color: #228B22;"></span>
+                    </label>
+                </li>
+                <li>
+                    <label class="item-radio item-content">
+                        <input type="radio" name="color-radio" value="deeppink"><i class="ti-check"></i>
+                        <span class="circle-color bg-deeppink" style="background-color: #FFC0CB;"></span>
+                    </label>
+                </li>
+                <li>
+                    <label class="item-radio item-content">
+                        <input type="radio" name="color-radio" value="cadetblue"><i class="ti-check"></i>
+                        <span class="circle-color bg-cadetblue" style="background-color: #5f9ea0;"></span>
+                    </label>
+                </li>
+                <li>
+                    <label class="item-radio item-content">
+                        <input type="radio" name="color-radio" value="darkorchid"><i class="ti-check"></i>
+                        <span class="circle-color bg-darkorchid" style="background-color: #9932cc;"></span>
+                    </label>
+                </li>
+            </ul>
+            
+            <div class="card bg-transparent-card border-0 d-block mt-3">
+                <h4 class="d-inline font-xssss mont-font fw-700">Header Background</h4>
+                <div class="d-inline float-right mt-1">
+                    <label class="toggle toggle-menu-color"><input type="checkbox"><span class="toggle-icon"></span></label>
+                </div>
+            </div>
+            <div class="card bg-transparent-card border-0 d-block mt-3">
+                <h4 class="d-inline font-xssss mont-font fw-700">Menu Position</h4>
+                <div class="d-inline float-right mt-1">
+                    <label class="toggle toggle-menu"><input type="checkbox"><span class="toggle-icon"></span></label>
+                </div>
+            </div>
+            <div class="card bg-transparent-card border-0 d-block mt-3">
+                <h4 class="d-inline font-xssss mont-font fw-700">Dark Mode</h4>
+                <div class="d-inline float-right mt-1">
+                    <label class="toggle toggle-dark"><input type="checkbox"><span class="toggle-icon"></span></label>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <a href="{% url 'profile' request.user.slug %}" class="p-0 ms-3 menu-icon"><img style='border-radius: 50px' src="{{request.user.img.url}}" alt="user" class="w40 mt--1"></a>
+
+</div>

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Story Viewers{% endblock %}
+
+{% block body %}
+<div class="main-content right-chat-active">
+    <div class="middle-sidebar-bottom">
+        <div class="middle-sidebar-left">
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="card w-100 border-0 p-0 bg-white shadow-xss rounded-xxl">
+                        <div class="card-body d-flex align-items-center p-4">
+                            <h4 class="fw-700 mb-0 font-xssss text-grey-900">Story Viewers</h4>
+                            <a href="{% url 'story:view_story' story.id %}" class="ms-auto"><i class="feather-x-circle font-md text-grey-900"></i></a>
+                        </div>
+                        
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush">
+                                {% if viewers %}
+                                    {% for view in viewers %}
+                                        <div class="list-group-item d-flex align-items-center p-3">
+                                            <figure class="avatar me-2 mb-0">
+                                                <img src="{{ view.viewer.img.url }}" alt="image" class="float-right w45 rounded-circle">
+                                            </figure>
+                                            <h5 class="fw-700 text-grey-900 font-xssss mt-1">{{ view.viewer.username }}
+                                                {% if view.viewer.verified %}
+                                                    <i class="feather-check bg-success font-xs" style='border-radius:50px; margin-top:10%'></i>
+                                                {% endif %}
+                                            </h5>
+                                            <span class="d-block font-xssss fw-500 mt-1 lh-3 text-grey-500 ms-auto">{{ view.viewed_at|timesince }} ago</span>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="list-group-item text-center p-5">
+                                        <h4 class="fw-700 font-xs mb-4 mt-2">No viewers yet</h4>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

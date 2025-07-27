@@ -1,0 +1,96 @@
+{% extends 'conversation/base.html' %}
+{% load static %}
+{% block title %}
+Chats
+{% endblock title %}
+
+{% block body %}
+    <div class="main-content right-chat-active">
+        <div class="middle-sidebar-bottom">
+            <div class="middle-sidebar-left pe-0 ps-lg-3 ms-0 me-0" style="max-width: 100%;">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="chat-wrapper p-3 w-100 position-relative scroll-bar bg-white theme-dark-bg">
+                            <ul class="email-message">
+                                <li>
+                                    <a class="rounded-3 bg-lightblue theme-light-bg text-dark" href="{% url 'group' %}">
+                                        <h6 class="text-grey-900 text-grey-900 me-2 mb-0 mt-0 fw-700"><i class="ti-plus font-xs"></i> 
+                                        </h6> Create Group</a>
+                                </li>
+                                {% for msg in Convs %}
+                                    <li>
+                                        <a href="{% url 'conversation' msg.pk %}" class="rounded-3 bg-lightblue theme-light-bg">
+                                            <form class="form-check mt-1" method='POST'>
+                                                {% csrf_token %}
+                                                <input type="hidden" name="convid" value='{{msg.pk}}'>
+                                                <button class='btn bg-danger text-dark' style=' width: 100%;' type="submit">Block</button>
+                                            </form>
+                                            <div class="email-user">
+                                                {% if msg.unread_count %}
+                                                    <span class="ms-2 text-success me-3">{{msg.unread_count}}</span>
+                                                {% endif %}
+
+                                                {% if msg.is_group %}
+                                                    {% if msg.group_image %}
+                                                        <img style='border-radius: 50%' src="{{ msg.group_image.url }}" alt="user" class="w35 me-2">
+                                                    {% else %}
+                                                        <i class="feather-users text-dark font-xl ms-1 rounded-circle"></i>
+                                                    {% endif %}
+                                                        <h5 class='font-xssss text-grey-900 mb-0 mt-0 fw-700'>{{msg.group_name}}</h5>
+
+                                                {% elif request.user == msg.participants.first %}
+                                                    <img style='border-radius: 50px' src="{{ msg.participants.last.img.url }}" alt="user" class="w35 me-2">
+                                                    <h6 class="font-xssss text-grey-900 text-grey-900 mb-0 mt-0 fw-700">{{msg.participants.last.username}}
+                                                        {% if msg.participants.last.verified %}
+                                                            <i class="feather-check bg-success font-xsss" style='border-radius:50px; margin-top:10%'></i>
+                                                        {% endif %}
+                                                        {% if msg.participants.last.is_admin %}
+                                                           <i class="feather-check font-xss" style='background-color: #FDD017;border-radius:50px; margin-top:10%'></i>
+                                                        {% endif %}
+                                                    </h6>
+                                                {% else %}
+                                                    <img style='border-radius: 50px' src="{{ msg.participants.first.img.url }}" alt="user" class="w35 me-2">
+                                                    <h6 class="font-xssss text-grey-900 text-grey-900 mb-0 mt-0 fw-700">{{msg.participants.first.username}}
+                                                        {% if msg.participants.first.verified %}
+                                                            <i class="feather-check bg-success font-xsss" style='border-radius:50px; margin-top:10%'></i>
+                                                        {% endif %}
+                                                        {% if msg.participants.first.is_admin %}
+                                                            <i class="feather-check font-xss" style='background-color: #FDD017;border-radius:50px; margin-top:10%'></i>
+                                                        {% endif %}
+                                                    </h6>
+                                                {% endif %}
+                                            </div>
+
+                                            {% if msg.messages.last.content != None %}
+                                                <div class="email-text text-secondary-500 fw-600 font-xssss">
+                                                    {% if msg.messages.first.sender != request.user %}
+                                                        ({{msg.messages.first.sender.username}}),
+                                                    {% else %}
+                                                       (You),
+                                                    {% endif %}
+                                                    {% if msg.messages.all %}
+                                                        {% if msg.messages.first.content %}
+                                                            {{ msg.messages.first.content|truncatewords:2 }}
+                                                        {% else %}
+                                                            Photo
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="email-time text-grey-500 fw-600 d-flex flex-column align-items-start">
+                                                {{msg.updated_at|timesince}}
+                                            </div>
+                                        </a>
+                                    </li>
+                                {% endfor %}
+                            </ul>                                 
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+                
+        </div>            
+    </div>
+
+{% endblock body %}

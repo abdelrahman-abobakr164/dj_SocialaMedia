@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}
+{{name}}
+{% endblock title %}
+{% block body %}
+        <!-- main content -->
+        <div class="main-content right-chat-active">
+            
+            <div class="middle-sidebar-bottom">
+                <div class="middle-sidebar-left pe-0">
+                    <div class="row">
+                        <div class="col-xl-12">
+                            <div class="row ps-2 pe-1">
+                                {% for username in usernames %}
+                                    <div class="col-md-6 col-sm-6 pe-2 ps-2">
+                                        <div class="card d-block border-0 shadow-xss rounded-3 overflow-hidden mb-3">
+                                            <div class="card-body position-relative h100 bg-image-cover bg-image-center" style="background-image: url({{ username.cover.url }});"></div>
+                                            <div class="card-body d-block w-100 pl-10 pe-4 pb-4 pt-0 text-left position-relative">
+                                                <figure class="avatar position-absolute w75 z-index-1" style="top:-40px; left: 15px;"><img src="{{ username.img.url }}" alt="image" class="float-right p-1 bg-white rounded-circle w-100"></figure>
+                                                <div class="clearfix"></div>
+                                                <h4 class="fw-700 font-xsss mt-3 mb-1"><a href="{% url 'profile' username.slug %}" style='color:grey'>{{ username.username }}
+                                                    {% if username.verified %}
+                                                        <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                                    {% endif %}
+
+                                                    {% if username.is_admin %}
+                                                        <i class="feather-check font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+                                                    {% endif %}
+                                                </a></h4>
+                                                <p class="fw-500 font-xsssss text-grey-500 mt-0 mb-3">{{ username.followers.all.count }} Followers</p>
+                                                <span class="position-absolute right-15 top-0 d-flex align-items-center">
+                                                    {% if btn == 'UnFollow' %}
+                                                        <a href="{% url 'unfollow' username.id %}" class="text-center p-2 lh-24 w100 ms-1 ls-3 d-inline-block rounded-xl bg-danger font-xsssss fw-700 ls-lg text-white">UNFOLLOW</a>
+                                                    {% elif btn == 'Follow' %}
+                                                        <a href="{% url 'send_follow' username.id %}" class="text-center p-2 lh-24 w100 ms-1 ls-3 d-inline-block rounded-xl bg-secondary font-xsssss fw-700 ls-lg text-white">FOLLOW</a>
+                                                    {% else %}
+                                                        <a href="#" class="text-center p-2 lh-24 w100 ms-1 ls-3 d-inline-block rounded-xl bg-current font-xsssss fw-700 ls-lg text-white">Pending</a>
+                                                    {% endif %}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>               
+                    </div>
+                </div>
+                 
+            </div>            
+        </div>
+        <!-- main content -->
+{% endblock body %}

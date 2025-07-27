@@ -1,0 +1,267 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Sociala - {% block title %}{% endblock title %}</title>
+    <meta name="description" content="Sociala, social media, social network, social platform">
+    <meta name='author' content="Abdelrahman Abobakr">
+    {% block meta_head %}
+    
+    {% endblock meta_head %}
+    <meta property="og:site_name" content="Sociala">
+    <meta property="og:type" content="website"> 
+    
+    <link rel="stylesheet" href="{% static 'css/themify-icons.css' %}">
+    <link rel="stylesheet" href="{% static 'css/feather.css' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon.png' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/emoji.css' %}">
+    <link rel="stylesheet" href="{% static 'css/lightbox.css' %}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        .bg-lightblue {
+            background-color: #f0f2f5;
+        }
+        .comments-section {
+            transition: all 0.3s ease;
+            overflow: hidden;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .comment-item {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .comment-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            margin-bottom: 10px;
+        }
+        .comment-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .ajax-comment-form {
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+        .comment-success {
+            color: green;
+            margin-top: 5px;
+            display: none;
+        }
+        .comment-error {
+            color: red;
+            margin-top: 5px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="color-theme-blue mont-font">
+    
+    <div class="preloader"></div>
+    <div class="main-wrapper">
+        {% include 'parts/navbar.html' %}
+
+        {% if messages %}
+            <div style='margin-top:100px; margin-left: 335px; margin-right: 60px; margin-bottom: -120px'>
+            {% for msg in messages %}
+                {% if msg.level == 40 %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{msg}}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                    </button>
+                </div>
+                {% else %}
+                <div  class="alert alert-{{msg.tags}} alert-dismissible fade show" style='margin-bottom:30px; margin-top:20px' role="alert">
+                    {{msg}}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                    </button>
+                </div>
+                {% endif %}
+            {% endfor %}
+            </div>
+        {% endif %}
+
+        {% include 'parts/sidebar.html' %}
+
+        {% block body %}
+        {% endblock body %}
+
+
+         <div class="right-chat nav-wrap mt-2 right-scroll-bar">
+            <div class="middle-sidebar-right-content bg-white shadow-xss rounded-xxl">
+                <div class="section full pe-3 ps-4 pt-4 position-relative feed-body">
+                    <h4 class="font-xsssss text-grey-500 text-uppercase fw-700 ls-3">CHATS</h4>
+                    <ul class="list-group list-group-flush">
+                        {% for conv in UserChats %}
+                            <li class="bg-transparent list-group-item no-icon pe-0 ps-0 pt-2 pb-2 border-0 d-flex align-items-center">
+                                <figure class="avatar float-left mb-0 me-2">
+                                    {% if conv.is_group %}
+                                        {% if conv.group_image %}
+                                            <img style='border-radius: 50%' src="{{ conv.group_image.url }}" alt="image" class="w35">
+                                        {% else %}
+                                            <i class="feather-users text-dark font-xl ms-1  rounded-circle"></i>
+                                        {% endif %}
+                                        
+                                    {% elif conv.participants.last == request.user %}
+                                        <img style='border-radius: 50%' src="{{ conv.participants.first.img.url }}" alt="image" class="w35">
+                                    {% else %}
+                                        <img style='border-radius: 50%' src="{{ conv.participants.last.img.url }}" alt="image" class="w35">
+                                    {% endif %}
+                                </figure>
+                                <h3 class="fw-700 mb-0 mt-0">
+                                    {% if conv.is_group %}
+                                        <a class="font-xssss text-grey-600 d-block text-dark" href="{% url 'conversation' conv.pk %}">{{ conv.group_name }} </a>
+                                    {% elif conv.participants.last == request.user %}
+                                        <a class="font-xssss text-grey-600 d-block text-dark" href="{% url 'conversation' conv.pk %}">{{ conv.participants.first.username }} </a>
+                                    {% else %}
+                                        <a class="font-xssss text-grey-600 d-block text-dark" href="{% url 'conversation' conv.pk %}">{{ conv.participants.last.username }}</a>
+                                    {% endif %}
+                                </h3>
+                                {% if conv.unread_count >= 1 %}
+                                    <span class="badge badge-primary text-white badge-pill fw-500 mt-0"> {{ conv.unread_count }} </span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-footer border-0 shadow-lg bg-primary-gradiant">
+            <a href="/" class="nav-content-bttn nav-center"><i class="feather-home"></i></a>
+            <a href="{% url 'profile' request.user.slug %}" class="nav-content-bttn"><img src="{{ request.user.img.url }}" alt="user" class="w30 shadow-xss"></a>
+        </div>
+
+        <div class="app-header-search">
+            <form class="search-form" action='{% url "search" %}'>
+                <div class="form-group searchbox mb-0 border-0 p-1">
+                    <input type="text" class="form-control border-0" name='username' placeholder="Search...">
+                    <i class="input-icon">
+                        <ion-icon name="search-outline" role="img" class="md hydrated" aria-label="search outline"></ion-icon>
+                    </i>
+                    <a href="#" class="ms-1 mt-1 d-inline-block close searchbox-close">
+                        <i class="ti-close font-xs"></i>
+                    </a>
+                </div>
+            </form>
+        </div> 
+
+    </div> 
+
+   <script src="{% static 'js/plugin.js' %}"></script>
+   <script src="{% static 'js/scripts.js' %}"></script>
+   <script src="{% static 'js/lightbox.js' %}"></script>
+   
+   <script>
+       function toggleComments(sectionId) {
+           const commentsSection = document.getElementById(sectionId);
+           if (commentsSection.style.display === 'none') {
+               commentsSection.style.display = 'block';
+           } else {
+               commentsSection.style.display = 'none';
+           }
+       }
+       
+       function toggleReplies(sectionId) {
+           const repliesSection = document.getElementById(sectionId);
+           if (repliesSection.style.display === 'none') {
+               repliesSection.style.display = 'block';
+           } else {
+               repliesSection.style.display = 'none';
+           }
+       }
+       
+       function copyToClipboard(text) {
+           const tempInput = document.createElement('input');
+           tempInput.value = text;
+           document.body.appendChild(tempInput);
+           tempInput.select();
+           document.execCommand('copy');
+           document.body.removeChild(tempInput);
+           alert('Link copied to clipboard!');
+       }
+       
+       function createCommentHtml(comment) {
+           return `
+               <div class="comment-item d-flex mb-3">
+                   <figure class="avatar me-3">
+                       <img src="${comment.user_img}" alt="image" class="shadow-sm rounded-circle w35">
+                   </figure>
+                   <div class="comment-content bg-lightblue rounded-xxl p-2 w-100">
+                       <div class="d-flex justify-content-between">
+                           <a href="/profile/${comment.user_slug}/"><h4 class="fw-700 text-grey-900 font-xssss mt-1">${comment.username}</h4></a>
+                           <span class="font-xssss fw-500 text-grey-500">Just now</span>
+                       </div>
+                       <p class="fw-500 text-grey-800 font-xssss lh-20 mt-1 mb-0">${comment.comment}</p>
+                       <div class="comment-actions mt-2">
+                           <button class="btn btn-sm btn-secondary reply-btn" data-comment-id="${comment.id}">Reply</button>
+                       </div>
+                       <div class="reply-form mt-3" id="reply-form-${comment.id}" style="display: none;">
+                           <form id="reply-form-ajax-${comment.id}" class="ajax-comment-form">
+                               <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('input[name="csrfmiddlewaretoken"]').value}">
+                               <input name="comment" class="form-control mb-2" placeholder="Write your reply...">
+                               <button type="button" class="btn btn-sm btn-primary" onclick="submitComment('reply-form-ajax-${comment.id}', '${comment.post_id}', '${comment.id}')">Post</button>
+                               <button type="button" class="btn btn-sm btn-secondary cancel-reply">Cancel</button>
+                               <div class="comment-success"></div>
+                               <div class="comment-error"></div>
+                           </form>
+                       </div>
+                       <div id="replies-${comment.id}" class="replies-section mt-3" style="display: none;"></div>
+                   </div>
+               </div>
+           `;
+       }
+       
+       function createReplyHtml(reply) {
+           return `
+               <div class="reply-item d-flex mb-3 ms-5">
+                   <figure class="avatar me-2">
+                       <img src="${reply.user_img}" alt="image" class="shadow-sm rounded-circle w30">
+                   </figure>
+                   <div class="reply-content bg-lightblue rounded-xxl p-2">
+                       <div class="d-flex justify-content-between">
+                           <a href="/profile/${reply.user_slug}/"><h4 class="fw-700 text-grey-900 font-xssss mt-1">${reply.username}</h4></a>
+                           <span class="font-xssss fw-500 text-grey-500">Just now</span>
+                       </div>
+                       <p class="fw-500 text-grey-800 font-xssss lh-20 mt-1 mb-0">${reply.comment}</p>
+                       <small class="text-muted">Replying to <b>${reply.parent_username}</b></small>
+                   </div>
+               </div>
+           `;
+       }
+       
+       // Initialize event listeners after DOM is loaded
+       document.addEventListener('DOMContentLoaded', function() {
+           // Add event listeners for reply buttons
+           document.querySelectorAll('.reply-btn').forEach(button => {
+               button.addEventListener('click', function() {
+                   const commentId = this.getAttribute('data-comment-id');
+                   const replyForm = document.getElementById(`reply-form-${commentId}`);
+                   replyForm.style.display = replyForm.style.display === 'none' ? 'block' : 'none';
+               });
+           });
+           
+           // Add event listeners for cancel buttons
+           document.querySelectorAll('.cancel-reply').forEach(button => {
+               button.addEventListener('click', function() {
+                   this.closest('.reply-form').style.display = 'none';
+               });
+           });
+       });
+   </script>
+   
+   {% block script %}
+   {% endblock script %}
+</body>
+
+</html>

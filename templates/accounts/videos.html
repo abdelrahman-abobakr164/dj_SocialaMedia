@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}
+Videos
+{% endblock title %}
+
+{% block body %}
+
+    <div class="main-content right-chat-active">
+        
+        <div class="middle-sidebar-bottom">
+            <div class="middle-sidebar-left">
+                <div class="row">
+                    <div class="col-xl-12">
+                        <div class="row">
+                            {% for post in posts %}
+                                <div class="card w-100 shadow-xss rounded-xxl border-0 p-4 mb-4">
+                                    <div class="card-body p-0 d-flex">
+                                        <figure class="avatar me-3"><img src="{{ profile.img.url }}" alt="image" class="shadow-sm rounded-circle w45"></figure>
+                                        <h4 class="fw-700 text-grey-900 font-xssss mt-1">{{ post.user.username }}
+                                                {% if post.user.verified %}
+                                                    <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                                {% endif %} 
+                                                {% if post.user.is_admin %}
+                                                                                                                <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+
+                                                {% endif %}
+                                            <span class="d-block font-xssss fw-500 mt-1 lh-3 text-grey-500">{{ post.created_at|timesince }} ago</span></h4>
+                                        
+                                        {% if request.user.is_admin or request.user == post.user %}
+                                            <a href="#" class="ms-auto" id="dropdownMenu6" data-bs-toggle="dropdown" aria-expanded="false"><i class="ti-more-alt text-grey-900 btn-round-md bg-greylight font-xss"></i></a>
+                                            <div class="dropdown-menu dropdown-menu-end p-4 rounded-xxl border-0 shadow-lg" aria-labelledby="dropdownMenu6">
+                                                <div class="card-body p-0 d-flex">
+                                                    <i class="feather-trash text-grey-500 me-3 font-lg"></i>
+                                                    <a href="{% url 'post-delete' post.pk %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Delete <span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Delete Your Post</span></h4></a>
+                                                </div>
+                                            {% if request.user == post.user %}
+                                                <div class="card-body p-0 d-flex mt-2">
+                                                    <i class="feather-alert-circle text-grey-500 me-3 font-lg"></i>
+                                                    <a href="{% url 'post-update' post.pk %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Edit<span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Edit Your Post</span></h4></a>
+                                                </div>
+                                            {% endif %}
+                                            </div>
+                                        {% endif %}
+
+                                    </div>
+
+                                    {% if post.caption %}
+                                        <div class="card-body p-0 me-lg-5">
+                                            <p class="fw-500 text-grey-500 lh-26 font-xssss w-100">{{post.caption|truncatewords:1}}<a href="{% url 'post-detail' post.pk %}" class="fw-600 text-primary ms-2">See more</a></p>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    
+                                    {% for i in post.media.all %}
+                                        <div class="card-body p-0 mb-3 rounded-3 overflow-hidden">
+                                            <video controls class="float-right w-100" style='height: 560px'>
+                                                <source src="{{ i.file.url }}" type="video/mp4">
+                                            </video>
+                                        </div>
+                                    {% endfor %}
+
+                                    <div class="card-body d-flex p-0">
+                                        <a href="{% url 'like' post_content_type_id post.id %}" class="d-flex align-items-center fw-600 text-grey-900 text-dark lh-26 font-xssss me-3"><i class="feather-thumbs-up text-white bg-primary-gradiant me-1 btn-round-xs font-xss"></i> {{post.like_count}} Like</a>
+                                        <a href="javascript:void(0);" onclick="toggleComments('comments-{{ post.id }}')" class="d-flex align-items-center fw-600 text-grey-900 text-dark lh-26 font-xssss"><i class="feather-message-circle text-dark text-grey-900 btn-round-sm font-lg"></i><span id="comment-count-{{ post.id }}">{{ post.comments.all.count }}</span> Comment</a>
+                                        <a href="#" id="dropdownMenu31" data-bs-toggle="dropdown" aria-expanded="false" class="ms-auto d-flex align-items-center fw-600 text-grey-900 text-dark lh-26 font-xssss"><i class="feather-share-2 text-grey-900 text-dark btn-round-sm font-lg"></i><span class="d-none-xs">Share</span></a>
+                                        <div class="dropdown-menu dropdown-menu-end p-4 rounded-xxl border-0 shadow-lg" aria-labelledby="dropdownMenu31">
+                                            <h4 class="fw-700 font-xss text-grey-900 d-flex align-items-center">Share <i class="feather-x ms-auto font-xssss btn-round-xs bg-greylight text-grey-900 me-2"></i></h4>
+                                            <div class="card-body p-0 d-flex">
+                                                <ul class="d-flex align-items-center justify-content-between mt-2">
+                                                    <li class="me-1"><a href="https://www.facebook.com/sharer.php?u={{ request.build_absolute_uri }}{% url 'post-detail' post.id %}" 
+                                                    target="_blank" class="btn-round-lg bg-facebook"><i class="font-xs ti-facebook text-white"></i></a></li>
+                                                    
+                                                    <li class="me-1"><a href="https://twitter.com/intent/tweet?url={{ request.build_absolute_uri }}{% url 'post-detail' post.id %}&text={{ post.caption }}" 
+                                                    target="_blank" class="btn-round-lg bg-twiiter"><i class="font-xs ti-twitter-alt text-white"></i></a></li>
+                                                    <li><a href="https://wa.me/?text={{ post.caption|urlencode }}%20{{ request.build_absolute_uri|urlencode }}{% url 'post-detail' post.id %}" 
+                                                    target="_blank" class="btn-round-lg bg-whatsup"><i class="font-xs feather-phone text-white"></i></a></li>
+                                                </ul>
+                                            </div>
+                                            <h4 class="fw-700 font-xssss mt-4 text-grey-500 d-flex align-items-center mb-3">Copy Link</h4>
+                                            <i onclick="copyToClipboard('127.0.0.1:800{% url "post-detail" post.id %}')" class="feather-copy position-absolute right-35 mt-3 font-xs text-grey-500"></i>
+                                            <input value='127.0.0.1:800{% url 'post-detail' post.id %}' onclick="copyToClipboard('127.0.0.1:800{% url 'post-detail' post.id %}')" class="bg-grey text-grey-500 font-xssss border-0 lh-32 p-2 font-xssss fw-600 rounded-3 w-100 theme-dark-bg">
+                                        </div>
+                                    </div><hr>
+
+                                    <div id="comments-{{ post.id }}" class="messages-content pb-5" style='display:none'>
+                                        {% for i in post.none_parent_comment %}
+                                            <div class="comment-item d-flex mb-3">
+                                                <figure class="avatar me-3">
+                                                    <img src="{{i.user.img.url}}" alt="image" class="shadow-sm rounded-circle w35">
+                                                </figure>
+                                                <div class="comment-content bg-lightblue rounded-xxl p-2 w-100">
+                                                    <div class="d-flex justify-content-between">
+                                                        <a href="{% url 'profile' i.user.slug %}"><h4 class="fw-700 text-grey-900 font-xssss mt-1">{{ i.user.username }}
+                                                            {% if i.user.verified %}
+                                                                <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                                            {% endif %}
+                                                            {% if i.user.is_admin %}
+                                                                                                                            <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+
+                                                            {% endif %}
+                                                        </h4></a>
+                                                        <span class="font-xssss fw-500 text-grey-500">{{ i.updated_at|timesince }} ago</span>
+                                                    </div>
+                                                    <p class="fw-500 text-grey-800 font-xssss lh-20 mt-1 mb-0">{{ i.comment }}</p>
+                                                    
+                                                    <div class="comment-actions mt-2">
+                                                        <a href="{% url 'like' comment_content_type_id i.id %}" class="d-flex align-items-center fw-600 text-grey-900 text-dark lh-26 font-xssss me-3"><i class="feather-thumbs-up text-white bg-primary-gradiant me-1 btn-round-xs font-xss"></i> {{i.like_count}} Like</a>
+                                                        <button class="btn btn-sm btn-secondary reply-btn" data-comment-id="{{ i.id }}">Reply</button>
+                                                        
+                                                        {% if i.replies.exists %}
+                                                            <button class="btn ms-3 btn-sm btn-outline-dark" 
+                                                                    onclick="toggleReplies('replies-{{ i.id }}')"
+                                                                    data-replies="{{ i.id }}"
+                                                                    data-count="{{ i.replies.count }}">
+                                                                {{ i.replies.count }} replies
+                                                            </button>
+                                                        {% endif %}
+                                                        
+                                                        {% if request.user == post.user or request.user == i.user or request.user.is_admin %}
+                                                            <div class="dropdown ms-auto">
+                                                                <a href="#" id="dropdownMenu{{ i.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                                    <i class="ti-more-alt text-grey-900 btn-round bg-greylight"></i>
+                                                                </a>
+                                                                <div class="dropdown-menu dropdown-menu-end p-4 rounded-xxl border-0 shadow-lg" aria-labelledby="dropdownMenu{{ i.id }}">
+                                                                    {% if request.user == post.user or request.user == i.user or request.user.is_admin %}
+                                                                        <div class="card-body p-0 d-flex">
+                                                                            <i class="feather-trash text-grey-500 me-3 font-lg"></i>
+                                                                            <a href="{% url 'comment-delete' i.pk %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Delete <span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Delete Your comment</span></h4></a>
+                                                                        </div>
+                                                                    {% endif %}
+                                                                    
+                                                                    {% if request.user == i.user %}
+                                                                        <div class="card-body p-0 d-flex mt-2">
+                                                                            <i class="feather-alert-circle text-grey-500 me-3 font-lg"></i>
+                                                                            <a href="{% url 'comment-update' i.pk %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Edit <span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Edit Your comment</span></h4></a>
+                                                                        </div>
+                                                                    {% endif %}
+                                                                </div>
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+
+                                                    <div class="reply-form mt-3" id="reply-form-{{ i.id }}" style="display: none;">
+                                                        <form id="reply-form-ajax-{{ i.id }}" action='{% url "create-comment" %}' method='POST' class="ajax-comment-form">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="post_id" value='{{post.id}}'>
+                                                            <input type="hidden" name="parent" value='{{i.id}}'>
+                                                            <input name="comment" class="form-control mb-2" placeholder="Write your reply...">
+                                                            <button type="submit" class="btn btn-sm btn-primary" >Post</button>
+                                                            <button type="button" class="btn btn-sm btn-secondary cancel-reply">Cancel</button>
+                                                            <div class="comment-success"></div>
+                                                            <div class="comment-error"></div>
+                                                        </form>
+                                                    </div>
+                                                    
+                                                    <div id="replies-{{ i.id }}" class="replies-section mt-3" style="display: none;">
+                                                        {% for reply in i.replies.all %}
+                                                            <div class="reply-item d-flex mb-3 ms-5">
+                                                                <figure class="avatar me-2">
+                                                                    <img src="{{ reply.user.img.url }}" alt="image" class="shadow-sm rounded-circle w30">
+                                                                </figure>
+                                                                <div class="reply-content bg-lightblue rounded-xxl p-2">
+                                                                    <div class="d-flex justify-content-between">
+                                                                        <a href="{% url 'profile' reply.user.slug %}"><h4 class="fw-700 text-grey-900 font-xssss mt-1">{{ reply.user.username }}</h4></a>
+                                                                        <span class="font-xssss fw-500 text-grey-500">{{ reply.created_at|timesince }} ago</span>
+                                                                    </div>
+                                                                    <p class="fw-500 text-grey-800 font-xssss lh-20 mt-1 mb-0">{{ reply.comment }}</p>
+                                                                    <small class="text-muted">Replying to <b>{{ i.user.username }}</b></small>
+                                                                </div>
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                        <div class="clearfix"></div>
+                                    </div>
+
+                                    <form  class="chat-form" method='POST' action='{% url "create-comment" %}'>
+                                        {% csrf_token %}
+                                        <div class="d-flex">
+                                            <input name="post_id" type="hidden" value="{{ post.id }}">
+                                            <input name="comment" type="text" class="form-control border-dark-md theme-dark-bg" placeholder="Leave Your Comment...">
+                                            <button type="submit" class="btn"> <i class="feather-send mb-1 text-white font-md text-white position-absolute" style="bottom: 35px;right:30px;"></i></button>
+                                        </div>
+                                    </form>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>               
+
+                </div>
+            </div>
+                
+        </div>            
+    </div>
+
+{% endblock body %}

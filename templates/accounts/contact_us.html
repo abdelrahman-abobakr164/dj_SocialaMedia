@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load django_htmx %}
+{% block title %}
+Contact Us
+{% endblock title %}
+
+{% block body %}
+    <div style='margin-top: 100px' class="container theme-dark-bg">
+        <div class="middle-sidebar-bottom">
+            <div class="middle-sidebar-left">
+                <div class="middle-wrap">
+                    <div class="card w-100 border-0 bg-white shadow-xs p-0 mb-4">
+                        <div class="card-body p-4 w-100 bg-current border-0 d-flex rounded-3">
+                            <a onclick="history.back()" class="d-inline-block mt-2"><i class="ti-arrow-left font-sm text-white"></i></a>
+                            <h4 class="font-xs text-white fw-600 ms-4 mb-0 mt-2">Contact Us</h4>
+                        </div>
+                        <div class="card-body p-lg-5 p-4 w-100 border-0 mb-0">
+                            
+                        <form id="contact-us-form" method="POST" >
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col-lg-12 mb-3">
+                                    <div class="form-group icon-input mb-3">
+                                        <i class="font-sm ti-email text-grey-500 pe-0"></i>
+                                        {{form.email}}
+                                    </div>        
+                                </div>
+                            </div>
+
+                            <div class="row">   
+                                <div class="col-lg-12 mb-3">
+                                    <div class="form-group icon-input mb-3">
+                                        <i class="ti-text font-sm text-grey-500 pe-0"></i>
+                                        {{form.message}}
+                                    </div>        
+                                </div>
+                            </div>
+
+                            <div class="col-lg-12 mb-0 mt-2 ps-0">
+                                <button type="submit" class="btn bg-current text-center text-white font-xsss fw-600 p-3 w175 rounded-3 d-inline-block">Save</button>
+                            </div>
+                        </form>
+                        </div>
+                    </div>
+                    <!-- <div class="card w-100 border-0 p-2"></div> -->
+                </div>
+            </div>
+                
+        </div>            
+    </div>
+{% endblock %}

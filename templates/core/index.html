@@ -1,0 +1,469 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+{% load social_share %}
+{% load static %}
+
+{% block title %}Sociala{% endblock title %}
+
+{% block meta_head %}
+    <meta property="og:title" content="Sociala - Home">
+    <meta property="og:description" content="Welcome to Sociala, your social media platform to connect, share, and discover.">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:image" content="{% static 'images/favicon.png' %}">
+{% endblock meta_head %}
+
+{% block body %}
+    <style>
+        .story-unviewed {
+            border: 3px solid #0d6efd !important;
+            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.5) !important;
+        }
+        .replies-section {
+            margin-left: 2.5rem;
+            margin-top: 1.2rem;
+            border-left: 3px solid #e0e4ea;
+            padding-left: 1.2rem;
+        }
+        .reply-item {
+            background: #f9fafc;
+            border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(76,99,255,0.06);
+            padding: 1rem 1.2rem 0.8rem 1.2rem;
+            margin-bottom: 1.1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.9rem;
+            transition: box-shadow 0.18s, border 0.18s;
+            border: 1.5px solid #e0e4ea;
+            position: relative;
+        }
+        .reply-item:hover {
+            box-shadow: 0 6px 24px rgba(76,99,255,0.13);
+            border-color: #6c63ff;
+        }
+        .reply-item .avatar {
+            margin-top: 0.1rem;
+        }
+        .reply-content {
+            flex: 1;
+            background: none;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 0;
+        }
+        .reply-content h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 0.1rem;
+            margin-top: 0;
+            display: inline-block;
+        }
+        .reply-content .reply-meta {
+            font-size: 0.88rem;
+            color: #888;
+            margin-left: 0.7rem;
+            font-weight: 400;
+        }
+        .reply-content p {
+            color: #444;
+            font-size: 0.97rem;
+            margin: 0.2rem 0 0.3rem 0;
+            font-weight: 500;
+        }
+        .reply-content small {
+            color: #6c63ff;
+            font-size: 0.89rem;
+            font-weight: 500;
+        }
+        /* Post media modern style */
+        .post-media-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 2rem auto 2.2rem auto;
+            width: 100%;
+            max-width: 520px;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 1.5px 4px rgba(0,0,0,0.04);
+            border: 1px solid #e0e4ea;
+            padding: 1.2rem 1.2rem 1rem 1.2rem;
+            transition: box-shadow 0.2s, border 0.2s;
+        }
+        .post-media-wrapper img,
+        .post-media-wrapper video {
+            max-width: 100%;
+            max-height: 340px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            object-fit: cover;
+            display: block;
+            margin: 0 auto;
+            background: #f4f6fb;
+            box-shadow: 0 2px 8px rgba(76,99,255,0.06);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .post-media-wrapper a:hover img {
+            transform: scale(1.035);
+            box-shadow: 0 8px 32px rgba(76,99,255,0.13);
+            border-radius: 14px;
+        }
+    </style>
+
+    <div class="main-content right-chat-active">
+        <div class="middle-sidebar-bottom">
+            <div class="middle-sidebar-left">
+                <div class="row feed-body">
+                        
+                    {% if friends.exists or events.exists or users %}
+                    <div class="col-lg-{% if friends.exists or events.exists or users %}8 {% else %}8 mx-auto {% endif %}">
+                    {% endif %}
+
+                        <div class="card w-100 shadow-none bg-transparent bg-transparent-card border-0 p-0 mb-0">
+                            <div class="owl-carousel category-card owl-theme overflow-hidden nav-none">
+                                <div class="item">
+                                    <div class="card w125 h200 d-block border-0 shadow-none rounded-xxxl bg-dark overflow-hidden mb-3 mt-3">
+                                        <div class="card-body d-block p-3 w-100 position-absolute bottom-0 text-center">
+                                            <a href="{% url 'story:create_story' %}">
+                                                <span class="btn-round-lg bg-white"><i class="feather-plus font-lg"></i></span>
+                                                <div class="clearfix"></div>
+                                                <h4 class="fw-700 position-relative z-index-1 ls-1 font-xssss text-white mt-2 mb-1">Add Story </h4>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {% if user_stories %}
+                                    {% for user,stories in user_stories.items %}
+                                        {% if stories.0.image %}
+                                            <div class="item">
+                                                <a href="{% url 'story:view_story' stories.0.id %}" class="card w125 h200 d-block border-0 shadow-xss rounded-xxxl bg-gradiant-bottom overflow-hidden cursor-pointer mb-3 mt-3 {% if not stories.0.is_viewed %}story-unviewed{% endif %}" style="background-image: url({{stories.0.image.url}}); background-size: cover; background-position: center;">
+                                                    <div class="card-body d-block p-3 w-100 position-absolute bottom-0 text-center">
+                                                        <figure class="avatar ms-auto me-auto mb-0 position-relative w50 z-index-1"><img src="{{user.img.url}}" alt="image" class="float-right p-0 bg-white rounded-circle w-100 shadow-xss"></figure>
+                                                        <div class="clearfix"></div>
+                                                        <h4 class="fw-600 position-relative z-index-1 ls-1 font-xssss text-white mt-2 mb-1">{{user.username}}
+                                                            {% if user.verified %}
+                                                                <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                                            {% endif %}
+                                                            {% if user.is_admin %}
+                                                                <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+                                                            {% endif %}
+                                                        </h4>
+                                                    </div>
+                                                </a>
+                                            </div>  
+                                        {% elif stories.0.video %}
+                                            <div class="item">
+                                                <a href="{% url 'story:view_story' stories.0.id %}" class="card w125 h200 d-block border-0 shadow-xss rounded-xxxl bg-gradiant-bottom overflow-hidden cursor-pointer mb-3 mt-3 me-1 {% if not stories.0.is_viewed %}story-unviewed{% endif %}">
+                                                    <video autoplay loop class="float-right w-100">
+                                                        <source src="{{stories.0.video.url}}" type="video/mp4">
+                                                    </video>
+                                                    <div class="card-body d-block p-3 w-100 position-absolute bottom-0 text-center">
+                                                        <figure class="avatar ms-auto me-auto mb-0 position-relative w50 z-index-1"><img src="{{user.img.url}}" alt="image" class="float-right p-0 bg-white rounded-circle w-100 shadow-xss"></figure>
+                                                        <div class="clearfix"></div>
+                                                        <h4 class="fw-600 position-relative z-index-1 ls-1 font-xssss text-white mt-2 mb-1">{{ user.username }}
+                                                            {% if user.verified %}
+                                                                <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                                            {% endif %}
+                                                            {% if user.is_admin %}
+                                                                <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+                                                            {% endif %}
+                                                        </h4>
+                                                    </div>
+                                                </a>
+                                            </div>
+                                        {% endif %} 
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                    {% if not friends.exists and not events.exists and not users %}
+                        <div class="col-lg-{% if friends.exists or events.exists or users %}8 {% else %}8 mx-auto {% endif %}">
+                    {% endif %}
+
+
+                        {% if not posts %}
+                            <div class="card w-100 shadow-xss rounded-xxl border-0 ps-4 pt-4 pe-4 pb-3 mb-3 mt-3">
+                                <div class="card-body p-0">
+                                    <a class=" font-xssss fw-600 text-grey-500 card-body p-0 d-flex align-items-center"><i class="btn-round-sm font-xs text-primary feather-edit-3 me-2 bg-greylight"></i>Create Post</a>
+                                </div>
+                                <form method='POST' action='{% url "upload" %}' enctype='multipart/form-data' class="chat-form">
+                                    {% csrf_token %}
+                                    <div class="card-body p-0 mt-3 position-relative">
+                                        <figure class="avatar position-absolute ms-2 mt-1 top-5"><img src="{{request.user.img.url}}" alt="image" class="shadow-sm rounded-circle w30"></figure>
+                                        <textarea name="body" class="h100 bor-0 w-100 rounded-xxl p-2 ps-5 font-xssss text-grey-500 fw-500 border-light-md theme-dark-bg" cols="30" rows="10" placeholder="What's on your mind?"></textarea>
+                                        <input name='caption' type="text" class=' border-dark-md theme-dark-bg mb-2' placeholder="Caption...">
+                                        <input name='tags' type="text" class=' border-dark-md theme-dark-bg' placeholder="Tags"><br><br>
+                                    </div>
+                                    <div class="card-body d-flex p-0 mt-0">
+                                        <i class="font-lg text-success feather-image mt-2"></i><input name="files" multiple='true' type="file">
+                                        <button class="bg-current"><i class="ti-arrow-right text-white"></i></button>
+                                    </div>
+                                </form>
+                            </div>
+                        {% endif %}
+
+						{% for post in posts %}
+							<div style='max-width:80%' class="card  shadow-xss rounded-xxl border-0 p-4 mb-4">
+								<div class="card-body p-0 d-flex">
+									<a href="{% url 'profile' post.user.slug %}"><figure class="avatar me-3"><img src="{{ post.user.img.url }}" alt="image" class="shadow-sm rounded-circle w45"></figure></a>
+									<a href="{% url 'profile' post.user.slug %}"><h4 class="fw-700 text-grey-900 font-xssss mt-1">{{ post.user.username }}
+                                        
+                                        {% if post.user.verified %}
+                                            <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                        {% endif %}
+                                        
+                                        {% if post.user.is_admin %}
+                                            <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+                                        {% endif %}
+                                            
+                                         <span class="d-block font-xssss fw-500 mt-1 lh-3 text-grey-500">{{ post.created_at|timesince }} ago</span></h4></a>
+									{% if request.user == post.user or request.user.is_admin %}
+                                        <a href="#" class="ms-auto" id="dropdownMenu6" data-bs-toggle="dropdown" aria-expanded="false"><i class="ti-more-alt text-grey-900 btn-round-md bg-greylight font-xss"></i></a>
+                                        <div class="dropdown-menu dropdown-menu-end p-4 rounded-xxl border-0 shadow-lg" aria-labelledby="dropdownMenu6">
+                                            {% if request.user == post.user or request.user.is_admin %}
+											<div class="card-body p-0 d-flex">
+												<i class="feather-trash text-grey-500 me-3 font-lg"></i>
+												<a href="{% url 'post-delete' post.pk %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Delete <span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Delete Your Post</span></h4></a>
+											</div>
+                                            {% endif %}
+
+        									{% if request.user == post.user  %}
+											<div class="card-body p-0 d-flex mt-2">
+												<i class="feather-alert-circle text-grey-500 me-3 font-lg"></i>
+												<a href="{% url 'post-update' post.pk %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Edit<span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Edit Your Post</span></h4></a>
+											</div>
+                                            {% endif %}
+
+										</div>
+									{% endif %}
+								</div>
+								
+								{% if post.body %}
+									<div class="card-body p-0 me-lg-5">
+										<p class="fw-500 text-grey-500 lh-26 font-xssss w-100">{{post.body|truncatewords:1}}<a href="{% url 'post-detail' post.pk %}" class="fw-600 text-primary ms-2">See more</a></p>
+									</div>
+								{% else %}
+                                    {% if post.caption %}
+                                        <div class="card-body p-0 me-lg-5">
+                                            <p class="fw-500 text-grey-500 lh-26 font-xssss w-100">{{post.caption|truncatewords:1}}<a href="{% url 'post-detail' post.pk %}" class="fw-600 text-primary ms-2">See more</a></p>
+                                        </div>
+                                    {% endif %}
+                                    {% for i in post.media.all %}
+                                        <div class="post-media-wrapper">
+                                            {% if i.content_type == 'image' %}
+                                                <a href="{{ i.file.url }}" data-lightbox="roadtri"><img src="{{i.file.url}}" alt="image"></a>
+                                            {% elif i.content_type == 'video' %}
+                                                <video controls>
+                                                    <source src="{{i.file.url}}" type="video/mp4">
+                                                </video>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+								{% endif %}
+                                
+								<div class="card-body d-flex p-0">
+									<a href="{% url 'like' post_content_type_id post.id %}" class="d-flex align-items-center fw-600 text-grey-900 text-dark lh-26 font-xssss me-3"><i class="feather-thumbs-up text-white bg-primary-gradiant me-1 btn-round-xs font-xss"></i> {{post.like_count}} Like</a>
+									<a href="javascript:void(0);" onclick="toggleComments('comments-{{ post.id }}')" class="d-flex align-items-center fw-600 text-grey-900 text-dark lh-26 font-xssss"><i class="feather-message-circle text-dark text-grey-900 btn-round-sm font-lg"></i><span id="comment-count-{{ post.id }}">{{ post.comments.all.count }}</span> Comment</a>
+                                    <a href="#" id="dropdownMenu31" data-bs-toggle="dropdown" aria-expanded="false" class="ms-auto d-flex align-items-center fw-600 text-grey-900 text-dark lh-26 font-xssss"><i class="feather-share-2 text-grey-900 text-dark btn-round-sm font-lg"></i><span class="d-none-xs">Share</span></a>
+									<div class="dropdown-menu dropdown-menu-end p-4 rounded-xxl border-0 shadow-lg" aria-labelledby="dropdownMenu31">
+                                        <h4 class="fw-700 font-xss text-grey-900 d-flex align-items-center">Share <i class="feather-x ms-auto font-xssss btn-round-xs bg-greylight text-grey-900 me-2"></i></h4>
+                                        <div class="card-body p-0 d-flex">
+                                            <ul class="d-flex align-items-center justify-content-between mt-2">
+                                                <li class="me-1"><a href="https://www.facebook.com/sharer.php?u={{request.build_absolute_uri}}detail/{{post.pk}}/" 
+                                                target="_blank" class="btn-round-lg bg-facebook"><i class="font-xs ti-facebook text-white"></i></a></li>
+                                                <li><a href="https://wa.me/?text={{ post.caption|urlencode }}%20{{ request.build_absolute_uri|urlencode }}{% url 'post-detail' post.id %}" 
+                                                target="_blank" class="btn-round-lg bg-whatsup ms-2"><i class="font-xs feather-phone text-white"></i></a></li>
+												<li class="me-1">
+													<button class='btn'><i onclick="copyToClipboard('{{request.build_absolute_uri}}detail/{{post.pk}}/')" class="feather-link btn-round-lg bg-secondary font-xs text-white"></i>
+													</button>
+												</li>
+											</ul>
+                                        </div>
+                                    </div>
+								</div><hr>
+
+                                <div id="comments-{{ post.id }}" class="messages-content pb-5" style='display:none'>
+                                    {% for i in post.none_parent_comment %}
+                                        <div class="comment-item d-flex mb-3">
+                                            <figure class="avatar me-3">
+                                                <img src="{{i.user.img.url}}" alt="image" class="shadow-sm rounded-circle w35">
+                                            </figure>
+                                            <div class="comment-content bg-lightblue rounded-xxl p-2 w-100">
+                                                <div class="d-flex justify-content-between">
+                                                    <a href="{% url 'profile' i.user.slug %}"><h4 class="fw-700 text-grey-900 font-xssss mt-1">{{ i.user.username }}
+                                                    {% if i.user.verified %}
+                                                        <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                                    {% endif %}
+                                                    {% if i.user.is_admin %}
+                                                        <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+                                                    {% endif %}
+                                                    </h4></a>
+                                                    <span class="font-xssss fw-500 text-grey-500">{{ i.updated_at|timesince }} ago</span>
+                                                </div>
+                                                <p class="fw-500 text-grey-800 font-xssss lh-20 mt-1 mb-0">{{ i.comment }}</p>
+                                                
+                                                <div class="comment-actions mt-2">
+                                                    <a href="{% url 'like' comment_content_type_id i.id %}" class="d-flex align-items-center fw-600 text-grey-900 text-dark lh-26 font-xssss me-3"><i class="feather-thumbs-up text-white bg-primary-gradiant me-1 btn-round-xs font-xss"></i> {{i.like_count}} Like</a>
+                                                    <button class="btn btn-sm btn-secondary reply-btn" data-comment-id="{{ i.id }}">Reply</button>
+                                                    
+                                                    {% if i.replies.exists %}
+                                                        <button class="btn ms-3 btn-sm btn-outline-dark" 
+                                                                onclick="toggleReplies('replies-{{ i.id }}')"
+                                                                data-replies="{{ i.id }}"
+                                                                data-count="{{ i.replies.count }}">
+                                                            {{ i.replies.count }} replies
+                                                        </button>
+                                                    {% endif %}
+                                                    
+                                                    {% if request.user == post.user or request.user == i.user or request.user.is_admin %}
+                                                        <div class="dropdown ms-auto">
+                                                            <a href="#" id="dropdownMenu{{ i.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                                <i class="ti-more-alt text-grey-900 btn-round bg-greylight"></i>
+                                                            </a>
+                                                            <div class="dropdown-menu dropdown-menu-end p-4 rounded-xxl border-0 shadow-lg" aria-labelledby="dropdownMenu{{ i.id }}">
+                                                                {% if request.user == post.user or request.user == i.user or request.user.is_admin %}
+                                                                    <div class="card-body p-0 d-flex">
+                                                                        <i class="feather-trash text-grey-500 me-3 font-lg"></i>
+                                                                        <a href="{% url 'comment-delete' i.pk %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Delete <span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Delete Your comment</span></h4></a>
+                                                                    </div>
+                                                                {% endif %}
+                                                                
+                                                                {% if request.user == i.user %}
+                                                                    <div class="card-body p-0 d-flex mt-2">
+                                                                        <i class="feather-alert-circle text-grey-500 me-3 font-lg"></i>
+                                                                        <a href="{% url 'comment-update' i.pk %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Edit <span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Edit Your comment</span></h4></a>
+                                                                    </div>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+
+                                                <div class="reply-form mt-3" id="reply-form-{{ i.id }}" style="display: none;">
+                                                    <form id="reply-form-ajax-{{ i.id }}" action='{% url "create-comment" %}' method='POST' class="ajax-comment-form">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="post_id" value='{{post.id}}'>
+                                                        <input type="hidden" name="parent" value='{{i.id}}'>
+                                                        <input name="comment" class="form-control mb-2" placeholder="Write your reply...">
+                                                        <button type="submit" class="btn btn-sm btn-primary" >Post</button>
+                                                        <button type="button" class="btn btn-sm btn-secondary cancel-reply">Cancel</button>
+                                                        <div class="comment-success"></div>
+                                                        <div class="comment-error"></div>
+                                                    </form>
+                                                </div>
+                                                
+                                                <div id="replies-{{ i.id }}" class="replies-section mt-3" style="display: none;">
+                                                    {% for reply in i.replies.all %}
+                                                        <div class="reply-item">
+                                                            <figure class="avatar me-2" style="margin-top:0.2rem;">
+                                                                <img src="{{ reply.user.img.url }}" alt="image" class="shadow-sm rounded-circle w30">
+                                                            </figure>
+                                                            <div class="reply-content">
+                                                                <h4>{{ reply.user.username }}</h4>
+                                                                <span class="reply-meta">{{ reply.created_at|timesince }} ago</span>
+                                                                <p>{{ reply.comment }}</p>
+                                                                <small>Replying to <b>{{ i.user.username }}</b></small>
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                    <div class="clearfix"></div>
+                                </div>
+
+                                <form  class="chat-form" method='POST' action='{% url "create-comment" %}'>
+                                    {% csrf_token %}
+                                    <div class="d-flex">
+                                        <input name="post_id" type="hidden" value="{{ post.id }}">
+                                        <input name="comment" type="text" class="form-control border-dark-md theme-dark-bg" placeholder="Leave Your Comment...">
+                                        <button type="submit" class="btn"> <i class="feather-send mb-1 text-white font-md text-white position-absolute" style="bottom: 35px;right:30px;"></i></button>
+                                    </div>
+                                </form>
+							</div>
+						{% endfor %}
+                    </div>        
+
+                    {% if friends.exists or events.exists or users %}
+                        <div class="col-xl-4 col-xxl-3 col-lg-4 ps-lg-0">
+                            {% if friends.exists %}
+                                <div class="card w-100 shadow-xss rounded-xxl border-0 mb-3">
+                                    <div class="card-body d-flex align-items-center p-4">
+                                        <h4 class="fw-700 mb-0 font-xssss text-grey-900">Follow Requests</h4>
+                                        <a href="{% url 'pending-requests' %}" class="fw-600 ms-auto font-xssss text-primary">See all</a>
+                                    </div>
+                                    {% for profile in friends|slice:'3' %}
+                                        <div class="card-body d-flex pt-4 ps-4 pe-4 pb-0 border-top-xs bor-0">
+                                            <a href="{% url 'profile' profile.follower.slug %}"><figure class="avatar me-3"><img src="{{ profile.follower.img.url }}" alt="image" class="shadow-sm rounded-circle w45"></figure></a>
+                                            <a href="{% url 'profile' profile.follower.slug %}"><h4 class="fw-700 text-grey-900 font-xssss mt-1">{{ profile.follower.username }}
+                                                {% if profile.follower.verified %}
+                                                    <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                                {% endif %}
+                                                {% if profile.follower.is_admin %}
+                                                    <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+                                                {% endif %}
+                                            </h4></a>
+                                            <h5 class='ms-4 mt-1'> {% for user in users %}({{ user.followers.count }}){% endfor %} Matual Friend</h5>
+                                        </div>
+                                        <div class="card-body d-flex align-items-center pt-0 ps-4 pe-4 pb-4">
+                                            <a href="{% url 'respond_to_follow' profile.id 'accept' %}" class="p-2 lh-20 w100 bg-primary-gradiant me-2 text-white text-center font-xssss fw-600 ls-1 rounded-xl">Confirm</a>
+                                            <a href="{% url 'respond_to_follow' profile.id 'cancel' %}" class="p-2 lh-20 w100 bg-grey text-grey-800 text-center font-xssss fw-600 ls-1 rounded-xl">Cancel</a>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            {% if users %}
+                                <div class="card w-100 shadow-xss rounded-xxl border-0 mb-3">
+                                    <div class="card-body d-flex align-items-center p-4">
+                                        <h4 class="fw-700 mb-0 font-xssss text-grey-900">People You May Know</h4>
+                                        <a href="{% url 'suggestions' %}" class="fw-600 ms-auto font-xssss text-primary">See all</a>
+                                    </div>
+                                    {% for user in users %}
+                                        <div class="card-body d-flex pt-4 ps-4 pe-4 pb-0 border-top-xs bor-0">
+                                            <a href="{% url 'profile' user.slug %}"><figure class="avatar me-3"><img src="{{ user.img.url }}" alt="image" class="shadow-sm rounded-circle w45"></figure></a>
+                                            <a href="{% url 'profile' user.slug %}">
+                                                <h4 class="fw-700 text-grey-900 font-xssss mt-3">{{ user.username }}
+                                                {% if user.verified %}
+                                                    <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                                {% endif %}
+                                                {% if user.is_admin %}
+                                                   <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+                                                {% endif %}
+                                            </h4></a>
+                                        </div>
+                                        <div class="card-body d-flex align-items-center pt-0 ps-4 pe-4 pb-4">
+                                            <a href="{% url 'send_follow' user.id %}" class="p-2 lh-20 w100 bg-secondary me-2 text-white text-center font-xssss fw-600 ls-1 rounded-xl">Follow</a>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            {% if events.exists %}
+                                <div class="card w-100 shadow-xss rounded-xxl border-0 mb-3">
+                                    <div class="card-body d-flex align-items-center  p-4">
+                                        <h4 class="fw-700 mb-0 font-xssss text-grey-900">Event</h4>
+                                        <a href="{% url 'profile_event' request.user.slug %}" class="fw-600 ms-auto font-xssss text-primary">See all</a>
+                                    </div>
+                                    {% for i in events %}
+                                        <div class="card-body d-flex pt-0 ps-4 pe-4 pb-3 overflow-hidden">
+                                            <div class="bg-primary me-2 p-3 rounded-xxl"><h4 class="fw-700 font-lg ls-3 lh-1 text-white mb-0"><span class="ls-1 d-block font-xsss text-white fw-600">APR</span>23</h4></div>
+                                            <h4 class="fw-700 text-grey-900 font-xssss mt-2">Aniversary Event <span class="d-block font-xsssss fw-500 mt-1 lh-4 text-grey-500">41 madison ave, floor 24 new work, NY 10010</span> </h4>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>            
+    </div>
+
+{% endblock body %}

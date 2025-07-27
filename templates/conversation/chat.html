@@ -1,0 +1,279 @@
+{% extends 'conversation/base.html' %}
+{% block title %}
+Chat / {{ chat.id }}
+{% endblock title %}
+
+{% block style %}
+<style>
+    .scroll-to-bottom-btn {
+        position: fixed;
+        bottom: 150px;
+        right: 30px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        z-index: 1000;
+        opacity: 0.9;
+        transition: all 0.3s ease;
+    }
+
+    .scroll-to-bottom-btn:hover {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    .scroll-to-bottom-btn i {
+        font-size: 18px;
+    }
+</style>
+{% endblock style %}
+
+{% block body %}
+
+    <div class="main-content right-chat-activ ">
+        <div class="middle-sidebar-bottom">
+            <div class="middle-sidebar-left pe-0 ps-lg-3 ms-0 me-0" style="max-width: 100%;">
+                <div class="row">
+                    <div class="col-lg-12 position-relative">
+                        <div class="chat-wrapper pt-0 w-100 position-relative scroll-bar bg-white theme-dark-bg"style='height: 500px; overflow-y: auto;'>
+                            <div class="chat-body p-3 ">
+                            {% for msg in msgs %}
+                                <div class="messages-content pb-5 mb-3">
+                                    {% if msg.sender != request.user %}
+                                        <div class="message-item">
+                                            <div class="message-user">
+                                                <a href="{% url 'profile' msg.sender.slug %}">
+                                                <figure class="avatar">
+                                                    <img src="{{ msg.sender.img.url }}" alt="image">
+                                                </figure></a>
+                                                <div>
+                                                    <h5>{{ msg.sender.username }}
+                                                        {% if msg.sender.verified %}
+                                                            <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                                        {% endif %}
+                                                        
+                                                        {% if msg.sender.is_admin %}
+                                                            <i class="feather-check font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+                                                        {% endif %}
+                                                    </h5>
+                                                    <div class="time">{{ msg.timestamp|time:"h:i" }}</div>
+                                                </div>
+                                            </div>
+
+                                            {% for att in msg.attachments.all %}
+                                                {% if att.file_type == 'image' %}
+                                                    <div class="card-body d-block p-0 mb-3">
+                                                        <div class="row ps-2 pe-2">
+                                                            <div class="col p-1"><a href="{{ att.file.url }}" data-lightbox="roadtri"><img style='max-height: 200px; max-width: 170px' src="{{att.file.url}}" class="rounded-3 w-100" alt="image"></a>
+                                                                {% if request.user.verified or request.user.is_admin %}
+                                                                    <a href="{{ att.file.url }}"  style='color:black' download><i class="feather-download font-xs"></i></a>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {% elif att.file_type == 'video' %}
+                                                    <div class="card-body p-0 mb-3 rounded-3 overflow-hidden">
+                                                        <div class="row ps-2 pe-2">
+                                                            <div class=" col-sm p-1">
+                                                                <video controls style='max-height: 400px'>
+                                                                    <source src="{{ att.file.url }}" type="video/mp4">
+                                                                </video>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="card-body d-block p-0 mb-3">
+                                                        <div class="row ps-2 pe-2">
+                                                            <div class="col p-1"><a style='color:black' href="{{ att.file.url }}"><i class="ti-file " style='margin-left:15%; font-size: 80px'></i></a></div>
+                                                        </div>
+                                                    </div>
+                                                    <div >{{ att.file_name}}</div>
+                                                {% endif %}
+                                            {% endfor %}
+
+                                            {% if msg.content %}
+                                                <div class="message-wrap me-2">{{ msg.content }}</div>
+                                            {% endif %}
+                                        </div>
+
+                                    {% elif msg.sender == request.user %}
+                                        <div class="message-item outgoing-message">
+                                            {% for att in msg.attachments.all %}
+                                                {% if att.file_type == 'image' %}
+                                                    <div class="card-body d-block p-0 mb-3">
+                                                        <div class="row ps-2 pe-2">
+                                                            <div class="col p-1"><a href="{{ att.file.url }}" data-lightbox="roadtri"><img style='max-height: 200px; max-width: 170px' src="{{att.file.url}}" class="rounded-3 w-100" alt="image"></a></div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                {% elif att.file_type == 'video' %}
+                                                    <div class="card-body p-0 mb-3 rounded-3 overflow-hidden">
+                                                        <div class="row ps-2 pe-2">
+                                                            <div class=" col-sm p-1">
+                                                                <video controls style='max-height: 400px'>
+                                                                    <source src="{{ att.file.url }}" type="video/mp4">
+                                                                </video>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="card-body d-block p-0 mb-3">
+                                                        <div class="row ps-2 pe-2">
+                                                            <div class="col p-1"><a style='color:black' href="{{ att.file.url }}"><i class="ti-file " style='float:right; font-size: 80px'></i></a></div>
+                                                        </div>
+                                                    </div>
+                                                    <div >{{ att.file_name}}</div>
+                                                {% endif %}
+                                            {% endfor %}
+
+                                            {% if msg.content %}
+                                                <div class="message-wrap">{{ msg.content }}</div>
+                                            {% endif %}  
+
+                                            <div class="message-user">
+                                                <div class="time">{{ msg.timestamp|time:"h:i" }}<i class="ti-double-check {% if msg.read == True %}text-info{% else %}{% endif %}"></i></div>
+                                                <button type="button" class="btn ms-2 btn-xss">
+                                                    <a href="{% url 'delete-chat' msg.id %}"><i class="feather-trash text-danger font-xss"></i></a>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                    <div class="clearfix"></div>
+                                </div>
+                            {% endfor %}
+                            </div>
+
+                            <button id="scrollToBottomBtn" class="scroll-to-bottom-btn" title="Scroll to bottom">
+                                <i class="ti-arrow-down"></i>
+                            </button>
+                        </div>
+                        <div class="chat-bottom dark-bg p-3 shadow-none theme-dark-bg" style="width: 98%;">
+                            <form class="chat-form" method='POST' enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <input type="hidden" name="convid" value='{{chat.conversation.id}}'>
+                                <div class='d-flex'>
+                                    <input name="attachment" {% if CheckUserStatus %}disabled {% endif %}style='width:150px' multiple='true' type="file">
+                                    <input id="chat-message-input" class='bg-secondary' {% if CheckUserStatus %}disabled{% endif %} name='content' type="text" placeholder="type">
+                                    <button id="chat-message-submit" type='submit' {% if CheckUserStatus %}disabled{% endif %} class="bg-current"><i class="ti-arrow-right text-white"></i></button>
+                                </div>
+                            </form>
+                        </div> 
+                    </div>
+                </div>
+            </div>
+        </div>            
+    </div>
+
+{% endblock body %}
+
+{% block scripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const scrollContainer = document.querySelector('.chat-wrapper') || 
+                                document.querySelector('.chat-body');
+            const scrollButton = document.getElementById('scrollToBottomBtn');
+            
+            if (!scrollContainer || !scrollButton) return;
+            
+            // Initial scroll to bottom
+            scrollToBottom();
+            
+            // Show/hide button based on scroll position
+            scrollContainer.addEventListener('scroll', function() {
+                // Show button if not scrolled to bottom (with 50px threshold)
+                const showButton = scrollContainer.scrollTop + scrollContainer.clientHeight < 
+                                scrollContainer.scrollHeight - 50;
+                
+                scrollButton.style.display = showButton ? 'flex' : 'none';
+            });
+            
+            // Button click handler
+            scrollButton.addEventListener('click', scrollToBottom);
+            
+            // Scroll to bottom function
+            function scrollToBottom() {
+                scrollContainer.scrollTo({
+                    top: scrollContainer.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
+            
+            // Optional: Also handle window resize
+            window.addEventListener('resize', function() {
+                if (scrollContainer.scrollTop + scrollContainer.clientHeight >= 
+                    scrollContainer.scrollHeight - 50) {
+                    scrollToBottom();
+                }
+            });
+        });
+
+    </script>
+    <script>
+        // WebSocket connection for chat
+        const roomName = 'general';  // You can make this dynamic
+        const chatSocket = new WebSocket(
+            'ws://' + window.location.host + '/ws/chat/' + roomName + '/'
+        );
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            const messageElement = $('<div>').text(data.username + ': ' + data.message);
+            $('#chat-log').append(messageElement);
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        $('#chat-message-input').focus();
+        $('#chat-message-input').keypress(function(e) {
+            if (e.which == 13) {  // Enter key
+                $('#chat-message-submit').click();
+            }
+        });
+
+        $('#chat-message-submit').click(function(e) {
+            const messageInputDom = $('#chat-message-input')[0];
+            const message = messageInputDom.value;
+            chatSocket.send(JSON.stringify({
+                'message': message,
+                'username': '{{ user.username|default:"Anonymous" }}'
+            }));
+            messageInputDom.value = '';
+        });
+
+        // WebSocket connection for notifications
+        const notificationSocket = new WebSocket(
+            'ws://' + window.location.host + '/ws/notifications/'
+        );
+
+        notificationSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            if (data.type === 'notification') {
+                // Show notification (you can customize this)
+                alert('Notification: ' + data.message);
+            }
+        };
+
+        // WebSocket connection for live feed updates
+        const feedSocket = new WebSocket(
+            'ws://' + window.location.host + '/ws/feed/'
+        );
+
+        feedSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            if (data.type === 'feed_update') {
+                // Update the feed with new content
+                console.log('New feed update:', data.data);
+            }
+        };
+    </script>
+{% endblock scripts %}

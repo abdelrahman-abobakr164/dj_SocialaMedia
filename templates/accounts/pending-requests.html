@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}
+Pending Requests
+{% endblock title %}
+
+{% block body %}
+    <!-- main content -->
+    <div class="main-content right-chat-active">
+        
+        <div class="middle-sidebar-bottom">
+            <div class="middle-sidebar-left pe-0">
+                <div class="row">
+                    <div class="col-xl-12">
+                        <div class="card shadow-xss w-100 d-block d-flex border-0 p-4 mb-3">
+                            <div class="card-body d-flex align-items-center p-0">
+                                <h2 class="fw-700 mb-0 mt-0 font-md text-grey-900">Pending Requests: {{followers.count}}</h2>
+                            </div>
+                        </div>
+
+                        <div class="row ps-2 pe-2">
+                        {% for i in followers %}
+                            <div class="col-md-3 col-sm-4 pe-2 ps-2">
+                                <div class="card d-block border-0 shadow-xss rounded-3 overflow-hidden mb-3">
+                                    <div class="card-body d-block w-100 ps-3 pe-3 pb-4 text-center">
+                                        <figure class="avatar ms-auto me-auto mb-0 position-relative w65 z-index-1"><img src="{{ i.follower.img.url }}" alt="image" class="float-right p-0 bg-white rounded-circle w-100 shadow-xss"></figure>
+                                        <div class="clearfix"></div>
+                                        <h4 class="fw-700 font-xsss mt-3 mb-1">{{ i.follower.username }} 
+                                            {% if i.follower.verified %}
+                                                <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                            {% endif %}
+                                        </h4>
+                                        {{i.follower.followers.all.count}} followers <br>
+                                        <a href="{% url 'respond_to_follow' i.id 'accept' %}" class="btn pt-2 pb-2 ps-3 pe-3 lh-24 ms-1 ls-3 rounded-xl bg-success font-xsssss fw-700 ls-lg text-white">Accept</a>
+                                        <a href="{% url 'respond_to_follow' i.id 'cancel' %}" class="btn pt-2 pb-2 ps-3 pe-3 lh-24 ms-1 ls-3 rounded-xl bg-danger font-xsssss fw-700 ls-lg text-white">Cancel</a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+
+                        </div>
+                    </div>               
+                </div>
+            </div>
+                
+        </div>            
+    </div>
+    <!-- main content -->
+{% endblock body %}

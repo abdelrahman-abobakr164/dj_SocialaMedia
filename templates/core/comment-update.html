@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comment Update</title>
+    <style>
+        body {
+            background: #f4f6fb;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        .comment-card {
+            background: #fff;
+            padding: 2rem 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
+            min-width: 340px;
+            max-width: 100vw;
+        }
+        .comment-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+        .comment-input {
+            padding: 0.75rem 1rem;
+            border: 1px solid #e0e4ea;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: #f9fafc;
+            transition: border 0.2s;
+        }
+        .comment-input:focus {
+            border: 1.5px solid #6c63ff;
+            outline: none;
+            background: #fff;
+        }
+        .submit-btn {
+            background: linear-gradient(90deg, #6c63ff 0%, #48c6ef 100%);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(76, 99, 255, 0.08);
+        }
+        .submit-btn:hover {
+            background: linear-gradient(90deg, #48c6ef 0%, #6c63ff 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="comment-card">
+        <form method="POST" class="comment-form">
+            {% csrf_token %}
+            <input type="hidden" name="post_id" value='{{comment.post.id}}'>
+            <input type="text" placeholder="Edit your comment..." name='comment' value="{{ comment.comment }}" class="comment-input">
+            <input type="submit" value="Save Changes" class="submit-btn">
+        </form>
+    </div>
+</body>
+</html>

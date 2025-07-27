@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Group{% endblock title %}
+
+{% block body %}
+<style>
+    .card {
+        border-radius: 1.5rem;
+        transition: box-shadow 0.3s;
+    }
+    .card:hover {
+        box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+    .input-group .input-group-text {
+        background: #f0f4ff;
+        border: none;
+        color: #6c63ff;
+        transition: color 0.3s;
+        font-size: 1.2rem;
+        border-radius: 0.75rem 0 0 0.75rem;
+    }
+    .input-group .form-control {
+        border-radius: 0 0.75rem 0.75rem 0;
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .input-group:focus-within .input-group-text,
+    .input-group:hover .input-group-text {
+        color: #48c6ef;
+    }
+    .input-group:focus-within .form-control,
+    .input-group:hover .form-control {
+        border-color: #48c6ef;
+        box-shadow: 0 0 0 0.2rem rgba(72,198,239,.15);
+    }
+    .btn-primary {
+        background: linear-gradient(90deg, #6c63ff 0%, #48c6ef 100%);
+        border: none;
+        border-radius: 2rem;
+        transition: background 0.3s, transform 0.2s;
+    }
+    .btn-primary:hover, .btn-primary:focus {
+        background: linear-gradient(90deg, #48c6ef 0%, #6c63ff 100%);
+        transform: translateY(-2px) scale(1.03);
+        box-shadow: 0 4px 16px rgba(76, 110, 245, 0.15);
+    }
+    .custom-file-label {
+        transition: background 0.3s, color 0.3s;
+    }
+    .custom-file-input:focus ~ .custom-file-label {
+        background: #f0f4ff;
+        color: #6c63ff;
+    }
+    .custom-select-avatar {
+        display: flex;
+        align-items: center;
+    }
+    .custom-select-avatar img {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-right: 8px;
+        border: 2px solid #f1f1f1;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        transition: border-color 0.3s;
+    }
+    .custom-participants-select option {
+        padding-left: 40px;
+        position: relative;
+    }
+    .custom-participants-select option::before {
+        content: "";
+        display: inline-block;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background-size: cover;
+        background-position: center;
+        position: absolute;
+        left: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    .custom-participants-select option:hover,
+    .custom-participants-select option:focus {
+        background: #f0f4ff;
+        color: #6c63ff;
+    }
+</style>
+
+<div class="container d-flex justify-content-center align-items-center" style='margin-top:120px' >
+    <div class="card shadow-lg w-100" style="max-width: 500px;">
+        <div class="card-body p-4">
+            <h2 class="card-title text-center mb-4">Create Group</h2>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="form-group mb-5">
+                    <label for="group_name" class="font-weight-bold">Group Name</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="ti-user font-xs"></i></span>
+                        {{form.group_name}}
+                    </div>
+                </div>
+                <div class="form-group mb-5">
+                    <label custom-participants-select" class="font-weight-bold">Group Image</label>
+                    <div class="input-group">
+                        <div class="custom-file d-flex">
+                            <span data-img="{{ user.img.url }}"n class="input-group-text"><i class="ti-image font-xs"></i></span>
+                            <input type="file" name="group_image" id="" class="custom-file-input" accept=".jpg, .png">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group mb-4">
+                    <label for="participants" class="font-weight-bold">Add Participants</label>
+                    <select multiple class="form-control custom-participants-select" id="participants" name="participants">
+                        {% for user in users %}
+                            <option value="{{ user.id }}" data-img="{{ user.img.url }}">{{ user.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple users.</small>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block py-2 font-weight-bold">Create Group</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %} 
+
+{% block script %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show file name on file input
+            const fileInput = document.getElementById('group_image');
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    const fileName = e.target.files[0]?.name || 'Choose image';
+                    const label = fileInput.nextElementSibling;
+                    if (label) label.textContent = fileName;
+                });
+            }
+            const select = document.getElementById('participants');
+            if (select) {
+                for (let option of select.options) {
+                    const imgUrl = option.getAttribute('data-img');
+                    if (imgUrl) {
+                        option.style.backgroundImage = `url('${imgUrl}')`;
+                        option.style.backgroundRepeat = 'no-repeat';
+                        option.style.backgroundPosition = '8px center';
+                        option.style.backgroundSize = '28px 28px';
+                        option.style.paddingLeft = '40px';
+                    }
+                }
+            }
+        });
+    </script>
+{% endblock script %}

@@ -1,0 +1,492 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{profile.username}}{% endblock title %}
+
+{% block meta_head %}
+    <meta property="og:title" content="Sociala - Home">
+    <meta property="og:description" content="Welcome to Sociala, your social media platform to connect, share, and discover.">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:image" content="{% static 'images/favicon.png' %}">
+{% endblock meta_head %}
+
+
+{% block body %}
+<style>
+	.story-unviewed {
+		border: 3px solid #0d6efd !important;
+		box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.5) !important;
+	}
+	.replies-section {
+		margin-left: 2.5rem;
+		margin-top: 1.2rem;
+		border-left: 3px solid #e0e4ea;
+		padding-left: 1.2rem;
+	}
+	.reply-item {
+		background: #f9fafc;
+		border-radius: 14px;
+		box-shadow: 0 2px 12px rgba(76,99,255,0.06);
+		padding: 1rem 1.2rem 0.8rem 1.2rem;
+		margin-bottom: 1.1rem;
+		display: flex;
+		align-items: flex-start;
+		gap: 0.9rem;
+		transition: box-shadow 0.18s, border 0.18s;
+		border: 1.5px solid #e0e4ea;
+		position: relative;
+	}
+	.reply-item:hover {
+		box-shadow: 0 6px 24px rgba(76,99,255,0.13);
+		border-color: #6c63ff;
+	}
+	.reply-item .avatar {
+		margin-top: 0.1rem;
+	}
+	.reply-content {
+		flex: 1;
+		background: none;
+		border-radius: 0;
+		box-shadow: none;
+		padding: 0;
+	}
+	.reply-content h4 {
+		font-size: 1rem;
+		font-weight: 600;
+		color: #222;
+		margin-bottom: 0.1rem;
+		margin-top: 0;
+		display: inline-block;
+	}
+	.reply-content .reply-meta {
+		font-size: 0.88rem;
+		color: #888;
+		margin-left: 0.7rem;
+		font-weight: 400;
+	}
+	.reply-content p {
+		color: #444;
+		font-size: 0.97rem;
+		margin: 0.2rem 0 0.3rem 0;
+		font-weight: 500;
+	}
+	.reply-content small {
+		color: #6c63ff;
+		font-size: 0.89rem;
+		font-weight: 500;
+	}
+	/* Post media modern style */
+	.post-media-wrapper {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		margin: 2rem auto 2.2rem auto;
+		width: 100%;
+		max-width: 520px;
+		background: #fff;
+		border-radius: 18px;
+		box-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 1.5px 4px rgba(0,0,0,0.04);
+		border: 1px solid #e0e4ea;
+		padding: 1.2rem 1.2rem 1rem 1.2rem;
+		transition: box-shadow 0.2s, border 0.2s;
+	}
+	.post-media-wrapper img,
+	.post-media-wrapper video {
+		max-width: 100%;
+		max-height: 340px;
+		width: auto;
+		height: auto;
+		border-radius: 12px;
+		object-fit: cover;
+		display: block;
+		margin: 0 auto;
+		background: #f4f6fb;
+		box-shadow: 0 2px 8px rgba(76,99,255,0.06);
+		transition: transform 0.2s, box-shadow 0.2s;
+	}
+	.post-media-wrapper a:hover img {
+		transform: scale(1.035);
+		box-shadow: 0 8px 32px rgba(76,99,255,0.13);
+		border-radius: 14px;
+	}
+</style>
+	<div class="main-content right-chat-active">
+		<div class="middle-sidebar-bottom">
+			<div class="middle-sidebar-left">
+				<div class="row">
+					<div class="col-xl-12">
+						<div class="card w-100 shadow-xss rounded-xxl border-0 mb-3 mt-3 overflow-hidden">
+							<a href="{{profile.cover.url}}"><div class="card-body position-relative h240 bg-image-cover bg-image-center" style="background-image: url({{profile.cover.url}});"></div></a>
+							<div class="card-body d-block pt-4 text-center position-relative">
+								<a href="{{profile.img.url}}"><figure class="avatar mt--6 position-relative w75 z-index-1 w100 z-index-1 ms-auto me-auto"><img src="{{profile.img.url}}" alt="image" class="p-1 bg-white rounded-xl w-100"></figure></a>
+
+								<h4 class="font-xs ls-1 fw-700 text-grey-900">
+									{{ profile.username }} 
+									
+									{% if profile.verified  %}
+										<i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+									{% endif %}
+									
+									{% if profile.is_admin %}
+										<i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+									{% endif %}
+									
+									{% if profile.bio %}
+										<span class="d-block font-xssss fw-500 mt-1 lh-3 text-grey-500">
+										{{profile.bio}}</span></h4>
+									{% endif %}
+								<div class="d-flex align-items-center pt-0 position-absolute left-15 top-10 mt-4 ms-2">
+									{% if request.user == profile %}
+										<a href="{% url 'viewers-list' profile.slug %}">
+										<h4 class="font-xsssss text-center d-none d-lg-block text-grey-500 fw-600 ms-2 me-2"><b class="text-grey-900 mb-1 font-sm fw-700 d-inline-block ls-3 text-dark">{{ user.viewers.all.count }}</b> Viewers</h4></a>
+									{% endif %}
+
+									{% if profile.show_following == True or request.user == profile %}
+										<a href="{% url 'following' profile.slug %}">
+									{% endif %}
+									
+									<h4 class="font-xsssss text-center d-none d-lg-block text-grey-500 fw-600 ms-2 me-2"><b class="text-grey-900 mb-1 font-sm fw-700 d-inline-block ls-3 text-dark">{{ FollowingCount }}</b> Following</h4></a>
+									{% if profile.show_followers == True or request.user == profile %}
+									<a href="{% url 'followers' profile.slug %}">
+									{% endif %}
+
+									<h4 class="font-xsssss text-center d-none d-lg-block text-grey-500 fw-600 ms-2 me-2"><b class="text-grey-900 mb-1 font-sm fw-700 d-inline-block ls-3 text-dark">{{ FollowersCount }} </b> Followers</h4></a>
+									<h4 class="font-xsssss text-center d-none d-lg-block text-grey-500 fw-600 ms-2 me-2"><b class="text-grey-900 mb-1 font-sm fw-700 d-inline-block ls-3 text-dark">{{ profile.post_set.all.count }} </b> Posts</h4>
+
+								</div>
+
+								<div class="d-flex align-items-center justify-content-center position-absolute right-15 top-10 mt-2 me-2">
+
+									{% if request.user != profile %}
+										{% if is_following %}
+											<a href="{% url 'unfollow' profile.id %}" class="d-none d-lg-block bg-danger p-3 z-index-1 rounded-3 text-white font-xsssss text-uppercase fw-700 ls-3">UnFollow</a>
+										{% elif is_pending %}
+										 	<a href='{% url "cancel_request" profile.id %}' class="d-none d-lg-block bg-warning p-3 z-index-1 rounded-3 text-white font-xsssss text-uppercase fw-700 ls-3">Cancel Request</a>
+										{% else %}
+											<a href="{% url 'send_follow' profile.id %}" class="d-none d-lg-block  bg-secondary p-3 z-index-1 rounded-3 text-white font-xsssss text-uppercase fw-700 ls-3">Follow</a>
+										{% endif %}
+
+										{% if is_follower or is_following %}
+											<a href="{% url 'conversation' conversation.id %}" class="d-none d-lg-block bg-greylight btn-round-lg ms-2 rounded-3 text-grey-700"><i class="feather-mail font-md"></i></a>
+										{% endif %}
+										
+									{% elif request.user.verified == False and request.user.is_admin == False %}
+									    <script src="https://js.stripe.com/v3/"></script>
+										<button id="checkout-button" type='submit' class="btn btn-outline-success" style='height: 26px;'><h6>Get Verified $2.5</h6></button>
+									{% endif %}
+									
+								</div>
+							</div>
+							
+							<div class="card-body d-block w-100 shadow-none mb-0 p-0 border-top-xs">
+								<ul class="nav nav-tabs h55 d-flex product-info-tab border-bottom-0 ps-4" id="pills-tab" role="tablist">
+									<li class="list-inline-item me-5"><a class="fw-700 font-xssss text-grey-500 pt-3 pb-3 ls-1 d-inline-block" href="{% url 'videos' profile.slug %}" target='_blank' data-toggle="tab">Videos</a></li>
+								</ul>
+							</div>
+						</div>
+					</div>
+
+					{% if profile.about_me or profile.is_private == True or profile.location or profile.events.all %}
+						<div class="col-xl-4 col-xxl-3 col-lg-4 pe-0">
+							<div class="card w-100 shadow-xss rounded-xxl border-0 mb-3">
+
+								{% if profile.about_me %}
+									<div class="card-body d-block p-4">
+										<h4 class="fw-700 mb-3 font-xsss text-grey-900">About</h4>
+										<p class="fw-500 text-grey-500 lh-24 font-xssss mb-0">{{profile.about_me}}</p>
+									</div>
+								{% endif %}
+
+								{% if profile.is_private == True %}
+									<div class="card-body border-top-xs d-flex">
+										<i class="feather-lock text-grey-500 me-3 font-lg"></i>
+										<h4 class="fw-700 text-grey-900 font-xssss mt-0">Private <span class="d-block font-xssss fw-500 mt-1 lh-3 text-grey-500">This Account Is Private</span></h4>
+									</div>
+								{% endif %}
+
+								{% if profile.location %}
+									<div class="card-body d-flex pt-0">
+										<i class="feather-map-pin text-grey-500 me-3 font-lg"></i>
+										<h4 class="fw-700 text-grey-900 font-xssss mt-1">{{profile.location}} </h4>
+									</div>
+								{% endif %}
+							</div>
+							{% if profile.show_events == True or request.user == profile %}
+								{% if profile.events.all %}
+									<div class="card w-100 shadow-xss rounded-xxl border-0 mb-3">
+										<div class="card-body d-flex align-items-center  p-4">
+											<h4 class="fw-700 mb-0 font-xssss text-grey-900">Events</h4>
+											<a href="{% url 'profile_event' profile.slug %}" target='_blank' class="fw-600 ms-auto font-xssss text-primary">See all</a>
+										</div>
+
+										{% for i in profile.events.all|slice:'3' %}
+											<div class="card-body d-flex pt-0 ps-4 pe-4 pb-3 overflow-hidden">
+												<div class="bg-success me-2 p-3 rounded-xxl"><h4 class="fw-700 font-lg ls-3 lh-1 text-white mb-0"><span class="ls-1 d-block font-xsss text-white fw-600">{{ i.date|date:"b"|upper }}</span>{{ i.date|date:"d" }}</h4></div>
+												<h4 class="fw-700 text-grey-900 font-xssss mt-2">Meeting with clients <span class="d-block font-xsssss fw-500 mt-1 lh-4 text-grey-500">41 madison ave, floor 24 new work, NY 10010</span> </h4>
+											</div>
+										{% endfor %}
+									</div>
+								{% endif %}
+							{% endif %}
+						</div>
+					{% endif %}
+
+					<div class="{% if profile.about_me or profile.is_private == True or profile.location or profile.events.all %}
+						  col-lg-8{% else %}col-lg-8 mx-auto{% endif %}">
+											
+						<div class="card w-100 shadow-xss rounded-xxl border-0 ps-4 pt-4 pe-4 pb-3 mb-3 mt-3">
+							<div class="card-body p-0">
+								<a class=" font-xssss fw-600 text-grey-500 card-body p-0 d-flex align-items-center"><i class="btn-round-sm font-xs text-primary feather-edit-3 me-2 bg-greylight"></i>Create Post</a>
+							</div>
+							<form method='POST' action='{% url "upload" %}' enctype='multipart/form-data' class="chat-form">
+								{% csrf_token %}
+								<div class="card-body p-0 mt-3 position-relative">
+									<figure class="avatar position-absolute ms-2 mt-1 top-5"><img src="{{request.user.img.url}}" alt="image" class="shadow-sm rounded-circle w30"></figure>
+									<textarea name="body" class="h100 bor-0 w-100 rounded-xxl p-2 ps-5 font-xssss text-grey-500 fw-500 border-light-md theme-dark-bg" cols="30" rows="10" placeholder="What's on your mind?"></textarea>
+									<input name='caption' type="text" class=' border-dark-md theme-dark-bg mb-2' placeholder="Caption...">
+									<input name='tags' type="text" class=' border-dark-md theme-dark-bg' placeholder="Tags"><br><br>
+								</div>
+								<div class="card-body d-flex p-0 mt-0">
+									<i class="font-lg text-success feather-image mt-2"></i><input name="files" multiple='true' type="file">
+									<button class="bg-current"><i class="ti-arrow-right text-white"></i></button>
+								</div>
+							</form>
+						</div>
+
+						{% for post in posts %}
+							<div style='max-width:80%' class="card  shadow-xss rounded-xxl border-0 p-4 mb-4">
+								<div class="card-body p-0 d-flex">
+									<a href="{% url 'profile' post.user.slug %}"><figure class="avatar me-3"><img src="{{ post.user.img.url }}" alt="image" class="shadow-sm rounded-circle w45"></figure></a>
+									<a href="{% url 'profile' post.user.slug %}"><h4 class="fw-700 text-grey-900 font-xssss mt-1">{{ post.user.username }}
+                                        
+                                        {% if post.user.verified %}
+                                            <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                        {% endif %}
+                                        
+                                        {% if post.user.is_admin %}
+                                            <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+                                        {% endif %}
+                                            
+                                         <span class="d-block font-xssss fw-500 mt-1 lh-3 text-grey-500">{{ post.created_at|timesince }} ago</span></h4></a>
+									{% if request.user == post.user or request.user.is_admin %}
+                                        <a href="#" class="ms-auto" id="dropdownMenu6" data-bs-toggle="dropdown" aria-expanded="false"><i class="ti-more-alt text-grey-900 btn-round-md bg-greylight font-xss"></i></a>
+                                        <div class="dropdown-menu dropdown-menu-end p-4 rounded-xxl border-0 shadow-lg" aria-labelledby="dropdownMenu6">
+                                            {% if request.user == post.user or request.user.is_admin %}
+											<div class="card-body p-0 d-flex">
+												<i class="feather-trash text-grey-500 me-3 font-lg"></i>
+												<a href="{% url 'post-delete' post.pk %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Delete <span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Delete Your Post</span></h4></a>
+											</div>
+                                            {% endif %}
+
+        									{% if request.user == post.user  %}
+											<div class="card-body p-0 d-flex mt-2">
+												<i class="feather-alert-circle text-grey-500 me-3 font-lg"></i>
+												<a href="{% url 'post-update' post.pk %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Edit<span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Edit Your Post</span></h4></a>
+											</div>
+                                            {% endif %}
+
+										</div>
+									{% endif %}
+								</div>
+								
+								{% if post.body %}
+									<div class="card-body p-0 me-lg-5">
+										<p class="fw-500 text-grey-500 lh-26 font-xssss w-100">{{post.body|truncatewords:1}}<a href="{% url 'post-detail' post.pk %}" class="fw-600 text-primary ms-2">See more</a></p>
+									</div>
+								{% else %}
+                                    {% if post.caption %}
+                                        <div class="card-body p-0 me-lg-5">
+                                            <p class="fw-500 text-grey-500 lh-26 font-xssss w-100">{{post.caption|truncatewords:1}}<a href="{% url 'post-detail' post.pk %}" class="fw-600 text-primary ms-2">See more</a></p>
+                                        </div>
+                                    {% endif %}
+                                    {% for i in post.media.all %}
+                                        <div class="post-media-wrapper">
+                                            {% if i.content_type == 'image' %}
+                                                <a href="{{ i.file.url }}" data-lightbox="roadtri"><img src="{{i.file.url}}" alt="image"></a>
+                                            {% elif i.content_type == 'video' %}
+                                                <video controls>
+                                                    <source src="{{i.file.url}}" type="video/mp4">
+                                                </video>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+								{% endif %}
+                                
+								<div class="card-body d-flex p-0">
+									<a href="{% url 'like' post_content_type_id post.id %}" class="d-flex align-items-center fw-600 text-grey-900 text-dark lh-26 font-xssss me-3"><i class="feather-thumbs-up text-white bg-primary-gradiant me-1 btn-round-xs font-xss"></i> {{post.like_count}} Like</a>
+									<a href="javascript:void(0);" onclick="toggleComments('comments-{{ post.id }}')" class="d-flex align-items-center fw-600 text-grey-900 text-dark lh-26 font-xssss"><i class="feather-message-circle text-dark text-grey-900 btn-round-sm font-lg"></i><span id="comment-count-{{ post.id }}">{{ post.comments.all.count }}</span> Comment</a>
+                                    <a href="#" id="dropdownMenu31" data-bs-toggle="dropdown" aria-expanded="false" class="ms-auto d-flex align-items-center fw-600 text-grey-900 text-dark lh-26 font-xssss"><i class="feather-share-2 text-grey-900 text-dark btn-round-sm font-lg"></i><span class="d-none-xs">Share</span></a>
+									<div class="dropdown-menu dropdown-menu-end p-4 rounded-xxl border-0 shadow-lg" aria-labelledby="dropdownMenu31">
+                                        <h4 class="fw-700 font-xss text-grey-900 d-flex align-items-center">Share <i class="feather-x ms-auto font-xssss btn-round-xs bg-greylight text-grey-900 me-2"></i></h4>
+                                        <div class="card-body p-0 d-flex">
+                                            <ul class="d-flex align-items-center justify-content-between mt-2">
+                                                {% url 'post-detail' post.pk as post_detail_url %}
+                                                {% with post_absolute_url=request.build_absolute_uri|cut:request.path|add:post_detail_url %}
+                                                    <li class="me-1">
+                                                      <a href="https://www.facebook.com/sharer.php?u={{ post_absolute_url }}" 
+                                                         target="_blank" class="btn-round-lg bg-facebook">
+                                                        <i class="font-xs ti-facebook text-white"></i>
+                                                      </a>
+                                                    </li>
+                                                    <li>
+                                                      <a href="https://wa.me/?text={{ post.caption|urlencode }}%20{{ post_absolute_url|urlencode }}" 
+                                                         target="_blank" class="btn-round-lg bg-whatsup ms-2">
+                                                        <i class="font-xs feather-phone text-white"></i>
+                                                      </a>
+                                                    </li>
+                                                    <li class="me-1">
+                                                      <button class='btn'>
+                                                        <i onclick="copyToClipboard('{{ post_absolute_url }}')" class="feather-link btn-round-lg bg-secondary font-xs text-white"></i>
+                                                      </button>
+                                                    </li>
+                                                {% endwith %}
+                                            </ul>
+                                        </div>
+                                    </div>
+								</div><hr>
+
+                                <div id="comments-{{ post.id }}" class="messages-content pb-5" style='display:none'>
+                                    {% for i in post.none_parent_comment %}
+                                        <div class="comment-item d-flex mb-3">
+                                            <figure class="avatar me-3">
+                                                <img src="{{i.user.img.url}}" alt="image" class="shadow-sm rounded-circle w35">
+                                            </figure>
+                                            <div class="comment-content bg-lightblue rounded-xxl p-2 w-100">
+                                                <div class="d-flex justify-content-between">
+                                                    <a href="{% url 'profile' i.user.slug %}"><h4 class="fw-700 text-grey-900 font-xssss mt-1">{{ i.user.username }}
+                                                    {% if i.user.verified %}
+                                                        <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                                    {% endif %}
+                                                    {% if i.user.is_admin %}
+                                                        <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+                                                    {% endif %}
+                                                    </h4></a>
+                                                    <span class="font-xssss fw-500 text-grey-500">{{ i.updated_at|timesince }} ago</span>
+                                                </div>
+                                                <p class="fw-500 text-grey-800 font-xssss lh-20 mt-1 mb-0">{{ i.comment }}</p>
+                                                
+                                                <div class="comment-actions mt-2">
+                                                    <a href="{% url 'like' comment_content_type_id i.id %}" class="d-flex align-items-center fw-600 text-grey-900 text-dark lh-26 font-xssss me-3"><i class="feather-thumbs-up text-white bg-primary-gradiant me-1 btn-round-xs font-xss"></i> {{i.like_count}} Like</a>
+                                                    <button class="btn btn-sm btn-secondary reply-btn" data-comment-id="{{ i.id }}">Reply</button>
+                                                    
+                                                    {% if i.replies.exists %}
+                                                        <button class="btn ms-3 btn-sm btn-outline-dark" 
+                                                                onclick="toggleReplies('replies-{{ i.id }}')"
+                                                                data-replies="{{ i.id }}"
+                                                                data-count="{{ i.replies.count }}">
+                                                            {{ i.replies.count }} replies
+                                                        </button>
+                                                    {% endif %}
+                                                    
+                                                    {% if request.user == post.user or request.user == i.user or request.user.is_admin %}
+                                                        <div class="dropdown ms-auto">
+                                                            <a href="#" id="dropdownMenu{{ i.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                                <i class="ti-more-alt text-grey-900 btn-round bg-greylight"></i>
+                                                            </a>
+                                                            <div class="dropdown-menu dropdown-menu-end p-4 rounded-xxl border-0 shadow-lg" aria-labelledby="dropdownMenu{{ i.id }}">
+                                                                {% if request.user == post.user or request.user == i.user or request.user.is_admin %}
+                                                                    <div class="card-body p-0 d-flex">
+                                                                        <i class="feather-trash text-grey-500 me-3 font-lg"></i>
+                                                                        <a href="{% url 'comment-delete' i.pk %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Delete <span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Delete Your comment</span></h4></a>
+                                                                    </div>
+                                                                {% endif %}
+                                                                
+                                                                {% if request.user == i.user %}
+                                                                    <div class="card-body p-0 d-flex mt-2">
+                                                                        <i class="feather-alert-circle text-grey-500 me-3 font-lg"></i>
+                                                                        <a href="{% url 'comment-update' i.pk %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Edit <span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Edit Your comment</span></h4></a>
+                                                                    </div>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+
+                                                <div class="reply-form mt-3" id="reply-form-{{ i.id }}" style="display: none;">
+                                                    <form id="reply-form-ajax-{{ i.id }}" action='{% url "create-comment" %}' method='POST' class="ajax-comment-form">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="post_id" value='{{post.id}}'>
+                                                        <input type="hidden" name="parent" value='{{i.id}}'>
+                                                        <input name="comment" class="form-control mb-2" placeholder="Write your reply...">
+                                                        <button type="submit" class="btn btn-sm btn-primary" >Post</button>
+                                                        <button type="button" class="btn btn-sm btn-secondary cancel-reply">Cancel</button>
+                                                        <div class="comment-success"></div>
+                                                        <div class="comment-error"></div>
+                                                    </form>
+                                                </div>
+                                                
+                                                <div id="replies-{{ i.id }}" class="replies-section mt-3" style="display: none;">
+                                                    {% for reply in i.replies.all %}
+                                                        <div class="reply-item">
+                                                            <figure class="avatar me-2" style="margin-top:0.2rem;">
+                                                                <img src="{{ reply.user.img.url }}" alt="image" class="shadow-sm rounded-circle w30">
+                                                            </figure>
+                                                            <div class="reply-content">
+                                                                <h4>{{ reply.user.username }}</h4>
+                                                                <span class="reply-meta">{{ reply.created_at|timesince }} ago</span>
+                                                                <p>{{ reply.comment }}</p>
+                                                                <small>Replying to <b>{{ i.user.username }}</b></small>
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                    <div class="clearfix"></div>
+                                </div>
+
+                                <form  class="chat-form" method='POST' action='{% url "create-comment" %}'>
+                                    {% csrf_token %}
+                                    <div class="d-flex">
+                                        <input name="post_id" type="hidden" value="{{ post.id }}">
+                                        <input name="comment" type="text" class="form-control border-dark-md theme-dark-bg" placeholder="Leave Your Comment...">
+                                        <button type="submit" class="btn"> <i class="feather-send mb-1 text-white font-md text-white position-absolute" style="bottom: 35px;right:30px;"></i></button>
+                                    </div>
+                                </form>
+							</div>
+						{% endfor %}
+					</div>           
+				</div>
+			</div>
+		</div>            
+	</div>
+{% endblock body %}
+
+
+
+{% block script %}
+    <script type="text/javascript">
+        // Your public Stripe key
+        var stripe = Stripe('{{ stripe_public_key }}');  // Replace with your public key
+    
+        // The function to create the checkout session
+        function createCheckoutSession() {
+            fetch('{% url "create_checkout_session" profile.id %}', {
+                method: 'POST',
+            })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (sessionId) {
+                return stripe.redirectToCheckout({ sessionId: sessionId.id });
+            })
+            .then(function (result) {
+                if (result.error) {
+                    // If redirect fails, show an error to the user
+                    alert(result.error.message);
+                }
+            })
+            .catch(function (error) {
+                console.error('Error:', error);
+                alert("An error occurred while processing the payment.");
+            });
+        }
+    
+        // Add event listener to the button
+        document.getElementById("checkout-button").addEventListener("click", function(e) {
+            e.preventDefault();
+            createCheckoutSession();
+        });
+    </script>
+{% endblock script %}

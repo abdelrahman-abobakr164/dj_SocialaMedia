@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}
+Notifications
+{% endblock title %}
+
+{% block body %}
+
+<div class="main-content right-chat-active">
+            
+    <div class="middle-sidebar-bottom">
+        <div class="middle-sidebar-left pe-0">
+            <div class="row">
+                   
+                <div class="col-xl-12">
+                    <div class="chat-wrapper p-3 w-100 position-relative scroll-bar bg-white theme-dark-bg">
+                        <h2 class="fw-700 mb-4 mt-2 font-md text-grey-900 d-flex align-items-center">Notification
+                            <span class="circle-count bg-warning text-white font-xsssss rounded-3 ms-2 ls-3 fw-600 p-2  mt-0">{{today_notifs.count}}</span> 
+                            
+                            <form>
+                                <select name="date_filter" onchange="this.form.submit()" class="form-select" style='width: 200px; margin-left: 240%;'>
+                                    <option value="all" {% if request.GET.date_filter == 'all' or not request.GET.date_filter %}selected{% endif %}>
+                                        All Notifications
+                                    </option>
+                                    <option value="today" {% if request.GET.date_filter == 'today' %}selected{% endif %}>
+                                        Today
+                                    </option>
+                                    <option value="yesterday" {% if request.GET.date_filter == 'yesterday' %}selected{% endif %}>
+                                        Yesterday
+                                    </option>
+                                    <option value="last_30_days" {% if request.GET.date_filter == 'last_30_days' %}selected{% endif %}>
+                                        Last 30 Days
+                                    </option>
+                                </select>
+                            </form>
+
+                            <a href="{% url 'delete-all' %}" class="ms-auto btn-round-sm bg-greylight rounded-3"><i class="feather-trash-2 font-xss text-grey-500"></i></a></h2>
+                        </h2>
+                            
+                        <ul class="notification-box">
+                            {% for noti in today_notifs %}
+                                <li>
+                                    {% if noti.ntype == 'Comment' %}
+                                        <a style='color: white' href="{% url 'post-detail' noti.object_id %}" target='__blank' class="d-flex align-items-center p-3 rounded-3">
+                                    {% elif noti.ntype == 'Like' %}
+                                        <a style='color: white' href="{% url 'post-detail' noti.object_id %}" target='__blank' class="d-flex align-items-center p-3 rounded-3">
+                                    {% elif noti.ntype == 'Message' %}
+                                        {% if noti.content_object.conversation %}
+                                            <a style='color: white' href="{% if noti.content_object.content %}{% url 'conversation' noti.content_object.conversation.id %}{% endif %}" target='__blank' class="d-flex align-items-center p-3 rounded-3">
+                                            {% else %}
+                                                <a style='color: white' class="d-flex align-items-center p-3 rounded-3">
+                                        {% endif %}
+                                    {% else %}
+                                        <a style='color: white' href="{% url 'profile' noti.actor.slug %}" target='__blank' class="d-flex align-items-center p-3 rounded-3">
+                                    {% endif %}
+                                        
+
+                                        <img  style='border-radius: 50px' src="{{ noti.actor.img.url }}" alt="user" class="w45 me-3">
+                                        
+                                        {% if noti.ntype == 'Like' %}
+                                            <i class="feather-thumbs-up text-white bg-primary-gradiant me-2 font-xssss notification-react"></i>
+                                        {% elif noti.ntype == 'Message' %}
+                                            <i class="feather-message-square text-white bg-mini-gradiant me-2 font-xssss notification-react"></i>
+                                        {% elif noti.ntype == 'Follow Accepted' %}
+                                            <i class="feather-user-check text-white bg-primary-gradiant me-2 font-xssss notification-react"></i>
+                                        {% elif noti.ntype == 'Follow Request' %}
+                                            <i class="feather-user-plus text-white bg-primary-gradiant me-2 font-xssss notification-react"></i>
+                                        {% elif noti.ntype == 'New Follower' %}
+                                            <i class="feather-user text-white bg-primary-gradiant me-2 font-xssss notification-react"></i>
+                                        {% elif noti.ntype == 'Comment' %}
+                                            <i class="feather-message-circle text-white bg-mini-gradiant me-2 font-xssss notification-react"></i>
+                                        {% endif %}
+
+                                        <h6 class="font-xssss text-grey-900 text-grey-900 mb-0 mt-0 fw-500 lh-20">
+
+                                            {% if noti.ntype == 'New Follower' %}
+                                                <strong class='ms-1'> {{ noti.actor.username }}</strong> Followed You
+                                            {% elif noti.ntype == 'Follow Accepted' %}
+                                                <strong>{{ noti.actor.username }}</strong> Accepted Your Follow Request
+                                            {% elif noti.ntype == 'Follow Request' %}
+                                                <strong>{{ noti.actor.username }}</strong> Send You a {{ noti.ntype }}
+                                            {% elif noti.ntype == 'Message' %}
+                                                      
+                                                {% if noti.content_object.conversation %}
+                                                    {% if noti.content_object.content %}
+                                                        Message From<strong class='ms-1'>{{ noti.actor.username }}</strong>
+                                                        "{{noti.content_object.content|truncatewords:2}}"
+                                                    {% else %}
+                                                        <strong class='ms-1'>{{ noti.actor.username }} </strong>Send You an Image   
+                                                    {% endif %}
+                                                {% else %}
+                                                    <strong>{{noti.actor.username}} </strong> The Message is Deleted
+                                                {% endif %}
+
+                                            {% else %}
+                                                <strong class='me-1'>{{ noti.actor.username }}</strong>give You A
+                                                <strong class='ms-1 me-1'>{{ noti.ntype }}</strong> 
+                                                {% if noti.content_object.content %}
+                                                    "{{noti.content_object.content}}"
+                                                {% elif noti.content_object.body %}
+                                                    "{{noti.content_object.body}}"
+                                                {% endif %}
+                                            {% endif %}
+
+                                            <span class="d-block text-grey-500 font-xssss fw-600 mb-0 mt-0 0l-auto">{{ noti.created_at|date:"M d, Y H:i" }}</span> 
+                                        </h6>
+
+                                        <a href='{% url "delete-notification" noti.id %}' style='float:right; margin-top:-40px'>
+                                            <i class="feather-trash-2 text-danger font-sm ms-auto"></i>
+                                        </a>
+                                    </a>
+                                </li>
+                            {% endfor %}
+
+                        </ul>                                 
+                    </div>
+                </div>
+            </div>
+        </div>
+         
+    </div>            
+</div>
+
+{% endblock body %}

@@ -1,0 +1,21 @@
+from accounts.utils import generate_follow_suggestions
+from accounts.models import Follow
+from notifications.models import Notification
+
+
+def follow_suggestions(request):
+    if request.path == "admin":
+        return {}
+    else:
+        if request.user.is_authenticated:
+            friends = Follow.objects.filter(following=request.user, status="pending")
+            users = generate_follow_suggestions(request.user)
+            alerts = Notification.objects.filter(recipient=request.user, read=False)
+
+            return {
+                "users": users,
+                "alerts": alerts,
+                "friends": friends,
+            }
+        else:
+            return {}

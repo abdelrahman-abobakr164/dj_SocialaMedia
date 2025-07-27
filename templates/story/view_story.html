@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ story.user.username }}'s Story{% endblock %}
+
+{% block body %}
+<style>
+    .story-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+        background-color: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .story-content {
+        width: 100%;
+        max-width: 500px;
+        height: 100%;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    
+    .story-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        display: block;
+    }
+    
+    .story-video {
+        max-width: 100%;
+        max-height: 100%;
+        display: block;
+    }
+    
+    .story-header {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: 15px;
+        display: flex;
+        align-items: center;
+        z-index: 10;
+    }
+    
+    .story-progress-bar {
+        position: absolute;
+        top: 50px;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background-color: rgba(255, 255, 255, 0.3);
+        z-index: 20;
+    }
+    
+    .progress-inner {
+        height: 100%;
+        width: 0;
+        background-color: white;
+        animation: progress 10s linear forwards;
+    }
+    
+    @keyframes progress {
+        from { width: 0; }
+        to { width: 100%; }
+    }
+    
+    .story-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 10;
+    }
+    
+    .story-prev {
+        left: 10px;
+    }
+    
+    .story-next {
+        right: 10px;
+    }
+    
+    .user-info {
+        display: flex;
+        align-items: center;
+    }
+    
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 10px;
+    }
+    
+    .close-btn {
+        margin-left: auto;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .story-caption {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #333;
+        text-align: center;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        /* Add more styles as you like */
+    }
+</style>
+
+<div class="story-container">
+    <div class="story-content">
+        <div class="story-header">
+            <div class="user-info">
+                <img src="{{ story.user.img.url }}" alt="{{ story.user.username }}" class="user-avatar">
+                <h4 class="fw-700 mb-0 text-white">{{ story.user.username }}
+                    {% if story.user.verified %}
+                        <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                    {% endif %}
+                    {% if story.user.is_admin %}
+                        <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
+                    {% endif %}
+                </h4>
+            </div>
+            
+            {% if story.user == request.user %}
+                <a href="{% url 'story:story_viewers' story.id %}" class="btn-round-sm bg-white me-2 ms-auto">
+                    <i class="feather-eye font-xssss text-grey-900"></i>
+                    <span class="text-grey-900 font-xssss ms-1">{{ view_count }}</span>
+                </a>
+                <a href="{% url 'story:delete_story' story.id %}" class="btn-round-sm bg-danger me-2" onclick="return confirm('Are you sure you want to delete this story?');">
+                    <i class="feather-trash font-xs text-white"></i>
+                </a>
+            {% else %}
+                <div class="ms-auto"></div>
+            {% endif %}
+            
+            <div class="close-btn" onclick="history.back()">
+                <i class="feather-x text-white"></i>
+            </div>
+        </div>
+        
+        <div class="story-progress-bar mt-3">
+            <div class="progress-inner"></div>
+        </div>
+        
+        {% if story.image %}
+            <img src="{{ story.image.url }}" alt="Story" class="story-image">
+            <p class='story-caption'>{{ story.caption }}</p>
+        {% elif story.video %}
+            <video controls autoplay muted class="story-video">
+                <source src="{{ story.video.url }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <p class='story-caption'>{{ story.caption }}</p>
+        {% endif %}
+        
+        
+        {% if prev_story %}
+            <a href="{% url 'story:view_story' prev_story.id %}" class="story-nav story-prev">
+                <i class="feather-chevron-left font-md text-white"></i>
+            </a>
+        {% endif %}
+        
+        {% if next_story %}
+            <a href="{% url 'story:view_story' next_story.id %}" class="story-nav story-next">
+                <i class="feather-chevron-right font-md text-white"></i>
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+<script>
+    // Auto-redirect to next story when progress bar completes
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if image or video exists and is loaded
+        const storyImage = document.querySelector('.story-image');
+        const storyVideo = document.querySelector('.story-video');
+        
+        if (storyImage) {
+            storyImage.onload = function() {
+                console.log('Image loaded successfully');
+            };
+            storyImage.onerror = function() {
+                console.error('Error loading image:', this.src);
+                alert('Error loading image. Please try again.');
+                history.back();
+            };
+        }
+        
+        if (storyVideo) {
+            storyVideo.onloadeddata = function() {
+                console.log('Video loaded successfully');
+                this.play();
+            };
+            storyVideo.onerror = function() {
+                console.error('Error loading video:', this.querySelector('source').src);
+                alert('Error loading video. Please try again.');
+                history.back();
+            };
+        }
+        
+        {% if next_story %}
+        setTimeout(function() {
+            window.location.href = "{% url 'story:view_story' next_story.id %}";
+        }, 10000); // 10 seconds
+        {% else %}
+        setTimeout(function() {
+            window.location.href = "{% url 'story:story_list' %}";
+        }, 10000); // 10 seconds
+        {% endif %}
+
+    });
+</script>
+{% endblock script %}
+    
