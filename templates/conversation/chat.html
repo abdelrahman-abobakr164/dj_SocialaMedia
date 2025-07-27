@@ -33,6 +33,40 @@ Chat / {{ chat.id }}
     .scroll-to-bottom-btn i {
         font-size: 18px;
     }
+
+    .typing-indicator {
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        margin: 5px 0;
+        font-style: italic;
+        color: #6c757d;
+        display: none;
+    }
+
+    .new-message {
+        animation: slideIn 0.3s ease-in-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .online-indicator {
+        width: 10px;
+        height: 10px;
+        background-color: #28a745;
+        border-radius: 50%;
+        display: inline-block;
+        margin-left: 5px;
+    }
 </style>
 {% endblock style %}
 
@@ -43,10 +77,34 @@ Chat / {{ chat.id }}
             <div class="middle-sidebar-left pe-0 ps-lg-3 ms-0 me-0" style="max-width: 100%;">
                 <div class="row">
                     <div class="col-lg-12 position-relative">
-                        <div class="chat-wrapper pt-0 w-100 position-relative scroll-bar bg-white theme-dark-bg"style='height: 500px; overflow-y: auto;'>
-                            <div class="chat-body p-3 ">
+                        <!-- Chat Header -->
+                        <div class="chat-header p-3 border-bottom">
+                            <div class="d-flex align-items-center">
+                                {% if chat.conversation.is_group %}
+                                    <h5 class="mb-0">{{ chat.conversation.group_name }}</h5>
+                                {% else %}
+                                    {% with other_user=chat.conversation.other_participants|first %}
+                                        <figure class="avatar me-2">
+                                            <img src="{{ other_user.img.url }}" alt="image" width="40" height="40" style="border-radius: 50%;">
+                                        </figure>
+                                        <div>
+                                            <h5 class="mb-0">{{ other_user.username }}
+                                                {% if other_user.verified %}
+                                                    <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
+                                                {% endif %}
+                                                <span class="online-indicator d-none" id="online-indicator"></span>
+                                            </h5>
+                                            <small class="text-muted" id="typing-status"></small>
+                                        </div>
+                                    {% endwith %}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="chat-wrapper pt-0 w-100 position-relative scroll-bar bg-white theme-dark-bg" id="chat-messages" style='height: 500px; overflow-y: auto;'>
+                            <div class="chat-body p-3" id="messages-container">
                             {% for msg in msgs %}
-                                <div class="messages-content pb-5 mb-3">
+                                <div class="messages-content pb-5 mb-3" data-message-id="{{ msg.id }}">
                                     {% if msg.sender != request.user %}
                                         <div class="message-item">
                                             <div class="message-user">
@@ -149,6 +207,11 @@ Chat / {{ chat.id }}
                                     <div class="clearfix"></div>
                                 </div>
                             {% endfor %}
+                            
+                            <!-- Typing indicator -->
+                            <div class="typing-indicator" id="typing-indicator">
+                                <span id="typing-text"></span>
+                            </div>
                             </div>
 
                             <button id="scrollToBottomBtn" class="scroll-to-bottom-btn" title="Scroll to bottom">
@@ -156,13 +219,13 @@ Chat / {{ chat.id }}
                             </button>
                         </div>
                         <div class="chat-bottom dark-bg p-3 shadow-none theme-dark-bg" style="width: 98%;">
-                            <form class="chat-form" method='POST' enctype="multipart/form-data">
+                            <form class="chat-form" method='POST' enctype="multipart/form-data" id="message-form">
                                 {% csrf_token %}
                                 <input type="hidden" name="convid" value='{{chat.conversation.id}}'>
                                 <div class='d-flex'>
                                     <input name="attachment" {% if CheckUserStatus %}disabled {% endif %}style='width:150px' multiple='true' type="file">
-                                    <input id="chat-message-input" class='bg-secondary' {% if CheckUserStatus %}disabled{% endif %} name='content' type="text" placeholder="type">
-                                    <button id="chat-message-submit" type='submit' {% if CheckUserStatus %}disabled{% endif %} class="bg-current"><i class="ti-arrow-right text-white"></i></button>
+                                    <input id="chat-message-input" class='bg-secondary' {% if CheckUserStatus %}disabled{% endif %} name='content' type="text" placeholder="Type a message..." autocomplete="off">
+                                    <button id="chat-message-submit" type='button' {% if CheckUserStatus %}disabled{% endif %} class="bg-current"><i class="ti-arrow-right text-white"></i></button>
                                 </div>
                             </form>
                         </div> 
@@ -177,28 +240,201 @@ Chat / {{ chat.id }}
 {% block scripts %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const scrollContainer = document.querySelector('.chat-wrapper') || 
-                                document.querySelector('.chat-body');
+            const scrollContainer = document.querySelector('.chat-wrapper');
             const scrollButton = document.getElementById('scrollToBottomBtn');
+            const messagesContainer = document.getElementById('messages-container');
+            const messageInput = document.getElementById('chat-message-input');
+            const sendButton = document.getElementById('chat-message-submit');
+            const typingIndicator = document.getElementById('typing-indicator');
+            const typingText = document.getElementById('typing-text');
+            const typingStatus = document.getElementById('typing-status');
             
-            if (!scrollContainer || !scrollButton) return;
+            let typingTimer;
+            let isTyping = false;
+            let currentlyTypingUsers = new Set();
             
+            // WebSocket connection for chat
+            const conversationId = '{{ chat.conversation.id }}';
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const chatSocket = new WebSocket(
+                protocol + '//' + window.location.host + '/ws/chat/' + conversationId + '/'
+            );
+
+            chatSocket.onopen = function(e) {
+                console.log('Chat WebSocket connected');
+            };
+
+            chatSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                console.log('Received message:', data);
+                
+                if (data.type === 'chat_message') {
+                    appendMessage(data);
+                    scrollToBottom();
+                } else if (data.type === 'typing') {
+                    handleTypingIndicator(data);
+                } else if (data.error) {
+                    console.error('WebSocket error:', data.error);
+                }
+            };
+
+            chatSocket.onclose = function(e) {
+                console.error('Chat socket closed unexpectedly');
+                // Attempt to reconnect after 3 seconds
+                setTimeout(function() {
+                    console.log('Attempting to reconnect...');
+                    location.reload();
+                }, 3000);
+            };
+
+            chatSocket.onerror = function(e) {
+                console.error('WebSocket error:', e);
+            };
+
             // Initial scroll to bottom
             scrollToBottom();
             
-            // Show/hide button based on scroll position
+            // Show/hide scroll button based on scroll position
             scrollContainer.addEventListener('scroll', function() {
-                // Show button if not scrolled to bottom (with 50px threshold)
                 const showButton = scrollContainer.scrollTop + scrollContainer.clientHeight < 
                                 scrollContainer.scrollHeight - 50;
-                
                 scrollButton.style.display = showButton ? 'flex' : 'none';
             });
             
             // Button click handler
             scrollButton.addEventListener('click', scrollToBottom);
             
-            // Scroll to bottom function
+            // Message input handlers
+            messageInput.addEventListener('input', function() {
+                if (!isTyping && this.value.trim()) {
+                    isTyping = true;
+                    sendTypingIndicator(true);
+                }
+                
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(function() {
+                    if (isTyping) {
+                        isTyping = false;
+                        sendTypingIndicator(false);
+                    }
+                }, 1000);
+            });
+
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            sendButton.addEventListener('click', sendMessage);
+
+            // Functions
+            function sendMessage() {
+                const message = messageInput.value.trim();
+                if (message && chatSocket.readyState === WebSocket.OPEN) {
+                    chatSocket.send(JSON.stringify({
+                        'type': 'chat_message',
+                        'message': message
+                    }));
+                    messageInput.value = '';
+                    
+                    // Stop typing indicator
+                    if (isTyping) {
+                        isTyping = false;
+                        sendTypingIndicator(false);
+                    }
+                }
+            }
+
+            function sendTypingIndicator(typing) {
+                if (chatSocket.readyState === WebSocket.OPEN) {
+                    chatSocket.send(JSON.stringify({
+                        'type': 'typing',
+                        'is_typing': typing
+                    }));
+                }
+            }
+
+            function appendMessage(data) {
+                const isCurrentUser = data.user_id === {{ request.user.id }};
+                const messageHtml = createMessageHtml(data, isCurrentUser);
+                messagesContainer.insertAdjacentHTML('beforeend', messageHtml);
+            }
+
+            function createMessageHtml(data, isCurrentUser) {
+                const messageClass = isCurrentUser ? 'outgoing-message' : '';
+                const timeStamp = data.timestamp;
+                const verifiedBadge = data.is_verified ? '<i class="feather-check bg-success font-xs" style="border-radius:50px;"></i>' : '';
+                const adminBadge = data.is_admin ? '<i class="feather-check font-xs" style="border-radius:50px; background-color: #FDD017"></i>' : '';
+                
+                if (isCurrentUser) {
+                    return `
+                        <div class="messages-content pb-5 mb-3 new-message" data-message-id="${data.message_id}">
+                            <div class="message-item ${messageClass}">
+                                <div class="message-wrap">${escapeHtml(data.message)}</div>
+                                <div class="message-user">
+                                    <div class="time">${timeStamp}<i class="ti-double-check"></i></div>
+                                </div>
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="messages-content pb-5 mb-3 new-message" data-message-id="${data.message_id}">
+                            <div class="message-item">
+                                <div class="message-user">
+                                    <figure class="avatar">
+                                        <img src="${data.user_avatar || '/static/images/default-avatar.png'}" alt="image">
+                                    </figure>
+                                    <div>
+                                        <h5>${escapeHtml(data.username)} ${verifiedBadge} ${adminBadge}</h5>
+                                        <div class="time">${timeStamp}</div>
+                                    </div>
+                                </div>
+                                <div class="message-wrap me-2">${escapeHtml(data.message)}</div>
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
+                    `;
+                }
+            }
+
+            function handleTypingIndicator(data) {
+                if (data.is_typing) {
+                    currentlyTypingUsers.add(data.username);
+                } else {
+                    currentlyTypingUsers.delete(data.username);
+                }
+                
+                updateTypingDisplay();
+            }
+
+            function updateTypingDisplay() {
+                if (currentlyTypingUsers.size > 0) {
+                    const typingUsersList = Array.from(currentlyTypingUsers);
+                    let typingMessage;
+                    
+                    if (typingUsersList.length === 1) {
+                        typingMessage = `${typingUsersList[0]} is typing...`;
+                    } else if (typingUsersList.length === 2) {
+                        typingMessage = `${typingUsersList[0]} and ${typingUsersList[1]} are typing...`;
+                    } else {
+                        typingMessage = `${typingUsersList.length} people are typing...`;
+                    }
+                    
+                    typingText.textContent = typingMessage;
+                    typingIndicator.style.display = 'block';
+                    typingStatus.textContent = 'typing...';
+                } else {
+                    typingIndicator.style.display = 'none';
+                    typingStatus.textContent = '';
+                }
+                
+                scrollToBottom();
+            }
+
             function scrollToBottom() {
                 scrollContainer.scrollTo({
                     top: scrollContainer.scrollHeight,
@@ -206,7 +442,13 @@ Chat / {{ chat.id }}
                 });
             }
             
-            // Optional: Also handle window resize
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // Handle window resize
             window.addEventListener('resize', function() {
                 if (scrollContainer.scrollTop + scrollContainer.clientHeight >= 
                     scrollContainer.scrollHeight - 50) {
@@ -214,66 +456,5 @@ Chat / {{ chat.id }}
                 }
             });
         });
-
-    </script>
-    <script>
-        // WebSocket connection for chat
-        const roomName = 'general';  // You can make this dynamic
-        const chatSocket = new WebSocket(
-            'ws://' + window.location.host + '/ws/chat/' + roomName + '/'
-        );
-
-        chatSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            const messageElement = $('<div>').text(data.username + ': ' + data.message);
-            $('#chat-log').append(messageElement);
-        };
-
-        chatSocket.onclose = function(e) {
-            console.error('Chat socket closed unexpectedly');
-        };
-
-        $('#chat-message-input').focus();
-        $('#chat-message-input').keypress(function(e) {
-            if (e.which == 13) {  // Enter key
-                $('#chat-message-submit').click();
-            }
-        });
-
-        $('#chat-message-submit').click(function(e) {
-            const messageInputDom = $('#chat-message-input')[0];
-            const message = messageInputDom.value;
-            chatSocket.send(JSON.stringify({
-                'message': message,
-                'username': '{{ user.username|default:"Anonymous" }}'
-            }));
-            messageInputDom.value = '';
-        });
-
-        // WebSocket connection for notifications
-        const notificationSocket = new WebSocket(
-            'ws://' + window.location.host + '/ws/notifications/'
-        );
-
-        notificationSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            if (data.type === 'notification') {
-                // Show notification (you can customize this)
-                alert('Notification: ' + data.message);
-            }
-        };
-
-        // WebSocket connection for live feed updates
-        const feedSocket = new WebSocket(
-            'ws://' + window.location.host + '/ws/feed/'
-        );
-
-        feedSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            if (data.type === 'feed_update') {
-                // Update the feed with new content
-                console.log('New feed update:', data.data);
-            }
-        };
     </script>
 {% endblock scripts %}

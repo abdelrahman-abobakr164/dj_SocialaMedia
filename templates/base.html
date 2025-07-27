@@ -21,6 +21,19 @@
     <link rel="stylesheet" href="{% static 'css/emoji.css' %}">
     <link rel="stylesheet" href="{% static 'css/lightbox.css' %}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- WebSocket Notifications -->
+    <script>
+        // Make user data available globally for WebSocket
+        {% if user.is_authenticated %}
+            window.user_id = {{ user.id }};
+            window.username = "{{ user.username }}";
+        {% else %}
+            window.user_id = null;
+            window.username = null;
+        {% endif %}
+    </script>
+    <script src="{% static 'js/websocket-notifications.js' %}"></script>
 
     <style>
         .bg-lightblue {

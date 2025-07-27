@@ -1,6 +1,6 @@
 
 """
-ASGI config for cozastore project.
+ASGI config for social_media project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 
@@ -14,14 +14,14 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 from channels.security.websocket import AllowedHostsOriginValidator
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "cozastore.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "social_media.settings")
 
 # Initialize Django ASGI application early to ensure the AppRegistry
 # is populated before importing code that may import ORM models.
 django_asgi_app = get_asgi_application()
 
 # Import your WebSocket routing after Django is initialized
-from . import routing  # This will be created next
+from . import routing
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,

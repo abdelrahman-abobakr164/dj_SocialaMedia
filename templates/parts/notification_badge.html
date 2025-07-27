@@ -1,0 +1,99 @@
+<!-- Notification Badge Component -->
+<div class="notification-badge-container">
+    <a href="{% url 'notifications' %}" class="position-relative text-decoration-none">
+        <i class="feather-bell font-xl text-current"></i>
+        <span id="notification-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">
+            0
+        </span>
+        <span id="connection-status" class="position-absolute bottom-0 start-100 translate-middle" title="Connection status"></span>
+    </a>
+</div>
+
+<!-- Notification dropdown (optional) -->
+<div class="dropdown">
+    <button class="btn btn-link position-relative p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="feather-bell font-xl text-current"></i>
+        <span id="notification-badge-dropdown" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">
+            0
+        </span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end notification-dropdown" style="min-width: 300px; max-height: 400px; overflow-y: auto;">
+        <li class="dropdown-header d-flex justify-content-between align-items-center">
+            <span>Notifications</span>
+            <button class="btn btn-sm btn-outline-primary" data-action="mark-all-read">Mark all as read</button>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+            <div id="notification-list" class="px-3">
+                <p class="text-muted text-center py-3">Loading notifications...</p>
+            </div>
+        </li>
+    </ul>
+</div>
+
+<style>
+.notification-dropdown {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border: 1px solid #dee2e6;
+}
+
+.notification-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid #f8f9fa;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.notification-item:hover {
+    background-color: #f8f9fa;
+}
+
+.notification-item.unread {
+    background-color: #e3f2fd;
+    border-left: 3px solid #2196f3;
+}
+
+.notification-item .notification-content {
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.notification-item .notification-time {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+.notification-item .notification-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Sync notification badges
+    function updateNotificationBadges(count) {
+        const badges = document.querySelectorAll('#notification-badge, #notification-badge-dropdown');
+        badges.forEach(badge => {
+            if (count > 0) {
+                badge.style.display = 'inline';
+                badge.textContent = count > 99 ? '99+' : count;
+            } else {
+                badge.style.display = 'none';
+            }
+        });
+    }
+
+    // Listen for notification count updates
+    if (window.notificationManager) {
+        // Override the updateUnreadCount method to also update our badges
+        const originalUpdateUnreadCount = window.notificationManager.updateUnreadCount;
+        window.notificationManager.updateUnreadCount = function(count) {
+            originalUpdateUnreadCount.call(this, count);
+            updateNotificationBadges(count);
+        };
+    }
+});
+</script>
