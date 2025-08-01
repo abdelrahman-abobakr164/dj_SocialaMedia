@@ -237,3 +237,10 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = f'Sociala {env("EMAIL_HOST_USER")}'
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
+
+# Channel Layers Configuration
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
