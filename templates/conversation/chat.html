@@ -217,63 +217,64 @@ Chat / {{ chat.id }}
 
     </script>
     <script>
-        // WebSocket connection for chat
-        const roomName = 'general';  // You can make this dynamic
+        // WebSocket connection for chat using conversation ID
+        const roomName = '{{ chat.id }}';  // Use the conversation ID as room name
         const chatSocket = new WebSocket(
             'ws://' + window.location.host + '/ws/chat/' + roomName + '/'
         );
 
         chatSocket.onmessage = function(e) {
             const data = JSON.parse(e.data);
-            const messageElement = $('<div>').text(data.username + ': ' + data.message);
-            $('#chat-log').append(messageElement);
+            // Create a new message element and add it to the chat
+            const messageHTML = `
+                <div class="messages-content pb-5 mb-3">
+                    <div class="message-item d-flex align-items-center">
+                        <div class="message-content">
+                            <strong>${data.username}:</strong> ${data.message}
+                        </div>
+                    </div>
+                </div>
+            `;
+            $('.chat-body').append(messageHTML);
+            
+            // Scroll to bottom
+            const chatWrapper = $('.chat-wrapper')[0];
+            chatWrapper.scrollTop = chatWrapper.scrollHeight;
         };
 
         chatSocket.onclose = function(e) {
             console.error('Chat socket closed unexpectedly');
         };
 
+        chatSocket.onerror = function(e) {
+            console.error('WebSocket error:', e);
+        };
+
+        // Send message on Enter key or button click
         $('#chat-message-input').focus();
         $('#chat-message-input').keypress(function(e) {
             if (e.which == 13) {  // Enter key
-                $('#chat-message-submit').click();
+                e.preventDefault();
+                sendMessage();
             }
         });
 
         $('#chat-message-submit').click(function(e) {
-            const messageInputDom = $('#chat-message-input')[0];
-            const message = messageInputDom.value;
-            chatSocket.send(JSON.stringify({
-                'message': message,
-                'username': '{{ user.username|default:"Anonymous" }}'
-            }));
-            messageInputDom.value = '';
+            e.preventDefault(); // Prevent form submission
+            sendMessage();
         });
 
-        // WebSocket connection for notifications
-        const notificationSocket = new WebSocket(
-            'ws://' + window.location.host + '/ws/notifications/'
-        );
-
-        notificationSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            if (data.type === 'notification') {
-                // Show notification (you can customize this)
-                alert('Notification: ' + data.message);
+        function sendMessage() {
+            const messageInputDom = $('#chat-message-input')[0];
+            const message = messageInputDom.value.trim();
+            
+            if (message) {
+                chatSocket.send(JSON.stringify({
+                    'message': message,
+                    'username': '{{ user.username|default:"Anonymous" }}'
+                }));
+                messageInputDom.value = '';
             }
-        };
-
-        // WebSocket connection for live feed updates
-        const feedSocket = new WebSocket(
-            'ws://' + window.location.host + '/ws/feed/'
-        );
-
-        feedSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            if (data.type === 'feed_update') {
-                // Update the feed with new content
-                console.log('New feed update:', data.data);
-            }
-        };
+        }
     </script>
 {% endblock scripts %}
