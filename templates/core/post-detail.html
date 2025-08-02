@@ -1,22 +1,16 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load social_share %}
 {% block title %}{{ post.pk }}{% endblock title %}
 
 {% block meta_head %}
+    <meta name="description" content="Sociala, social media, social network, social platform">
+    <meta name='author' content="Abdelrahman Abobakr">
+    <meta property="og:site_name" content="Sociala">
+    <meta property="og:type" content="website">
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
-    <meta property="og:title" content="{% if post.caption %}{{ post.caption }}{% else %}{{ post.body|truncatechars:60 }}{% endif %}">
-    <meta property="og:description" content="{% if post.caption %}{{ post.caption }}{% else %}{{ post.body|truncatechars:100 }}{% endif %} by {{ post.user.username }}">
-    {% for i in post.media.all %}
-        {% if i.content_type == 'image' %}
-            <meta property="og:image" content="{{ i.file.url }}">
-        {% endif %}
-    {% endfor %}
-    {% for i in post.media.all %}
-        {% if i.content_type == 'video' %}
-            <meta property="og:video" content="{{ i.file.url }}">
-        {% endif %}
-    {% endfor %}
+    <meta property="og:title" content="Sociala - Home">
+    <meta property="og:description" content="Welcome to Sociala, your social media platform to connect, share, and discover.">
+    <meta property="og:image" content="{% static 'images/favicon.png' %}">
 
     <style>
         .post-media-wrapper {
@@ -169,10 +163,10 @@
                                 <h4 class="fw-700 font-xss text-grey-900 d-flex align-items-center">Share <i class="feather-x ms-auto font-xssss btn-round-xs bg-greylight text-grey-900 me-2"></i></h4>
                                 <div class="card-body p-0 d-flex">
                                     <ul class="d-flex align-items-center justify-content-between mt-2">
-                                        <li class="me-1"><a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" 
+                                        <li class="me-1"><a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri|urlencode }}" 
                                         target="_blank" class="btn-round-lg bg-facebook"><i class="font-xs ti-facebook text-white"></i></a></li>
-                                        <li><a href="https://wa.me/?text={{ post.caption|urlencode }}%20{{ request.build_absolute_uri|urlencode }}" 
-                                        target="_blank" class="btn-round-lg bg-whatsup ms-2"><i class="font-xs feather-phone text-white"></i></a></li>
+                                        <li><a href="https://wa.me/?text={% if post.caption %}{{ post.caption|urlencode }}{% elif post.body %}{{ post.body|urlencode }}{% endif %}%20{{ request.build_absolute_uri|urlencode }}" 
+                                            target="_blank" class="btn-round-lg bg-whatsup ms-2"><i class="font-xs feather-phone text-white"></i></a></li>
                                         <li >
                                             <button class='btn'><i onclick="copyToClipboard('{{request.build_absolute_uri}}')" class="feather-link btn-round-lg bg-secondary font-xs text-white"></i>
                                             </button>
@@ -297,4 +291,5 @@
                 
         </div>            
     </div>
+    
 {% endblock body %}

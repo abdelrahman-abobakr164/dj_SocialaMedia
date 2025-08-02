@@ -1,13 +1,102 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}
-Videos
-{% endblock title %}
+{% block title %}Videos{% endblock title %}
+
+{% block meta_head %}
+    <meta name="description" content="Sociala, social media, social network, social platform">
+    <meta name='author' content="Abdelrahman Abobakr">
+    <meta property="og:site_name" content="Sociala">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:title" content="{% if post.caption %}{{ post.caption }}{% else %}{{ post.body|truncatechars:60 }}{% endif %}">
+    <meta property="og:description" content="{% if post.caption %}{{ post.caption }}{% else %}{{ post.body|truncatechars:100 }}{% endif %} by {{ post.user.username }}">
+    {% if post.media.all %}<meta property="og:image" content="{{ post.media.all.0.file.url }}">{% endif %}
+    
+    <style>
+        .post-media-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            width: 100%;
+            overflow: hidden;
+        }
+        .post-media-wrapper img,
+        .post-media-wrapper video {
+            max-width: 600px;
+            max-height: 440px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            object-fit: cover;
+            display: block;
+            margin: 0 auto;
+            background: #f4f6fb;
+        }
+        .replies-section {
+        margin-left: 2.5rem;
+        margin-top: 1.2rem;
+        border-left: 3px solid #e0e4ea;
+        padding-left: 1.2rem;
+        }
+        .reply-item {
+            background: #f9fafc;
+            border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(76,99,255,0.06);
+            padding: 1rem 1.2rem 0.8rem 1.2rem;
+            margin-bottom: 1.1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.9rem;
+            transition: box-shadow 0.18s, border 0.18s;
+            border: 1.5px solid #e0e4ea;
+            position: relative;
+        }
+        .reply-item:hover {
+            box-shadow: 0 6px 24px rgba(76,99,255,0.13);
+            border-color: #6c63ff;
+        }
+        .reply-item .avatar {
+            margin-top: 0.1rem;
+        }
+        .reply-content {
+            flex: 1;
+            background: none;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 0;
+        }
+        .reply-content h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 0.1rem;
+            margin-top: 0;
+            display: inline-block;
+        }
+        .reply-content .reply-meta {
+            font-size: 0.88rem;
+            color: #888;
+            margin-left: 0.7rem;
+            font-weight: 400;
+        }
+        .reply-content p {
+            color: #444;
+            font-size: 0.97rem;
+            margin: 0.2rem 0 0.3rem 0;
+            font-weight: 500;
+        }
+        .reply-content small {
+            color: #6c63ff;
+            font-size: 0.89rem;
+            font-weight: 500;
+        }
+    </style>
+{% endblock meta_head %}
 
 {% block body %}
 
     <div class="main-content right-chat-active">
-        
         <div class="middle-sidebar-bottom">
             <div class="middle-sidebar-left">
                 <div class="row">
@@ -22,8 +111,7 @@ Videos
                                                     <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
                                                 {% endif %} 
                                                 {% if post.user.is_admin %}
-                                                                                                                <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
-
+                                                    <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
                                                 {% endif %}
                                             <span class="d-block font-xssss fw-500 mt-1 lh-3 text-grey-500">{{ post.created_at|timesince }} ago</span></h4>
                                         
@@ -47,15 +135,15 @@ Videos
 
                                     {% if post.caption %}
                                         <div class="card-body p-0 me-lg-5">
-                                            <p class="fw-500 text-grey-500 lh-26 font-xssss w-100">{{post.caption|truncatewords:1}}<a href="{% url 'post-detail' post.pk %}" class="fw-600 text-primary ms-2">See more</a></p>
+                                            <p class="fw-500 text-grey-500 lh-26 font-xssss w-100">{{post.caption}}</p>
                                         </div>
                                     {% endif %}
                                     
                                     
                                     {% for i in post.media.all %}
-                                        <div class="card-body p-0 mb-3 rounded-3 overflow-hidden">
-                                            <video controls class="float-right w-100" style='height: 560px'>
-                                                <source src="{{ i.file.url }}" type="video/mp4">
+                                        <div class="post-media-wrapper">
+                                            <video controls>
+                                                <source src="{{i.file.url}}" type="video/mp4">
                                             </video>
                                         </div>
                                     {% endfor %}
@@ -67,19 +155,18 @@ Videos
                                         <div class="dropdown-menu dropdown-menu-end p-4 rounded-xxl border-0 shadow-lg" aria-labelledby="dropdownMenu31">
                                             <h4 class="fw-700 font-xss text-grey-900 d-flex align-items-center">Share <i class="feather-x ms-auto font-xssss btn-round-xs bg-greylight text-grey-900 me-2"></i></h4>
                                             <div class="card-body p-0 d-flex">
+                                                {% url 'post-detail' post.pk as post_detail_url %}
+                                                {% with post_absolute_url=request.build_absolute_uri|cut:request.path|add:post_detail_url %}
                                                 <ul class="d-flex align-items-center justify-content-between mt-2">
-                                                    <li class="me-1"><a href="https://www.facebook.com/sharer.php?u={{ request.build_absolute_uri }}{% url 'post-detail' post.id %}" 
+                                                    <li class="me-1"><a href="https://www.facebook.com/sharer/sharer.php?u={{ post_absolute_url|urlencode }}" 
                                                     target="_blank" class="btn-round-lg bg-facebook"><i class="font-xs ti-facebook text-white"></i></a></li>
-                                                    
-                                                    <li class="me-1"><a href="https://twitter.com/intent/tweet?url={{ request.build_absolute_uri }}{% url 'post-detail' post.id %}&text={{ post.caption }}" 
-                                                    target="_blank" class="btn-round-lg bg-twiiter"><i class="font-xs ti-twitter-alt text-white"></i></a></li>
-                                                    <li><a href="https://wa.me/?text={{ post.caption|urlencode }}%20{{ request.build_absolute_uri|urlencode }}{% url 'post-detail' post.id %}" 
+                                                    <li><a href="https://wa.me/?text={{ post.caption|urlencode }}%20{{ post_absolute_url|urlencode }}" 
                                                     target="_blank" class="btn-round-lg bg-whatsup"><i class="font-xs feather-phone text-white"></i></a></li>
+                                                    <li><button class='btn'><i onclick="copyToClipboard('{{request.build_absolute_uri}}')" class="feather-link btn-round-lg bg-secondary font-xs text-white"></i>
+                                                    </button></li>
                                                 </ul>
                                             </div>
-                                            <h4 class="fw-700 font-xssss mt-4 text-grey-500 d-flex align-items-center mb-3">Copy Link</h4>
-                                            <i onclick="copyToClipboard('127.0.0.1:800{% url "post-detail" post.id %}')" class="feather-copy position-absolute right-35 mt-3 font-xs text-grey-500"></i>
-                                            <input value='127.0.0.1:800{% url 'post-detail' post.id %}' onclick="copyToClipboard('127.0.0.1:800{% url 'post-detail' post.id %}')" class="bg-grey text-grey-500 font-xssss border-0 lh-32 p-2 font-xssss fw-600 rounded-3 w-100 theme-dark-bg">
+                                            {% endwith %}
                                         </div>
                                     </div><hr>
 
@@ -96,8 +183,7 @@ Videos
                                                                 <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
                                                             {% endif %}
                                                             {% if i.user.is_admin %}
-                                                                                                                            <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
-
+                                                                <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
                                                             {% endif %}
                                                         </h4></a>
                                                         <span class="font-xssss fw-500 text-grey-500">{{ i.updated_at|timesince }} ago</span>

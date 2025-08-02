@@ -4,7 +4,7 @@ from environ import Env
 
 env = Env()
 Env.read_env()
-ENVIRONMENT = env("ENVIRONMENT", default="production")
+ENVIRONMENT = env("ENVIRONMENT")
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -29,6 +29,7 @@ ALLOWED_HOSTS = ["127.0.0.1", "localhost", "eager-badly-crayfish.ngrok-free.app"
 CSRF_TRUSTED_ORIGINS = ["https://eager-badly-crayfish.ngrok-free.app"]
 
 INSTALLED_APPS = [
+    "daphne",
     "jazzmin",
     "channels",
     "accounts",
@@ -48,7 +49,6 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "django.contrib.sitemaps",
-    "django_htmx",
     "django_bootstrap5",
     "django_social_share",
     "debug_toolbar",
@@ -71,7 +71,6 @@ ASGI_APPLICATION = "social_media.asgi.application"
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "django_htmx.middleware.HtmxMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -106,7 +105,7 @@ TEMPLATES = [
 ]
 
 ASGI_APPLICATION = "social_media.asgi.application"
-# WSGI_APPLICATION = "social_media.wsgi.application"
+WSGI_APPLICATION = "social_media.wsgi.application"
 
 
 SOCIALACCOUNT_PROVIDERS = {
@@ -199,6 +198,17 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")  # R
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Channel Layers Configuration for WebSocket
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": (
+            "channels.layers.InMemoryChannelLayer"
+            if DEBUG
+            else "channels_redis.core.RedisChannelLayer"
+        ),
+        "CONFIG": {} if DEBUG else {"hosts": [("127.0.0.1", 6379)]},
+    },
+}
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
