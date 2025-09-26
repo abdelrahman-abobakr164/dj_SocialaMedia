@@ -161,23 +161,23 @@
                 <div class="ms-auto"></div>
             {% endif %}
             
-            <div class="close-btn" onclick="history.back()">
+            <a href="{% url 'story:story_list' %}" class="close-btn">
                 <i class="feather-x text-white"></i>
-            </div>
+            </a>
         </div>
         
         <div class="story-progress-bar mt-3">
             <div class="progress-inner"></div>
         </div>
         
-        {% if story.image %}
-            <img src="{{ story.image.url }}" alt="Story" class="story-image">
-            <p class='story-caption'>{{ story.caption }}</p>
-        {% elif story.video %}
-            <video controls autoplay muted class="story-video">
-                <source src="{{ story.video.url }}" type="video/mp4">
+        {% if story.file.url|slice:'-3:' == 'mp4' %}
+            <video controls autoplay class="story-video">
+                <source src="{{ story.file.url }}" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
+            <p class='story-caption'>{{ story.caption }}</p>
+        {% else %}
+            <img src="{{ story.file.url }}" alt="Story" class="story-image">
             <p class='story-caption'>{{ story.caption }}</p>
         {% endif %}
         

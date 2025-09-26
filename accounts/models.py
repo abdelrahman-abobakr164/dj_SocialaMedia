@@ -52,25 +52,26 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=50, null=False, blank=True)
     username = models.CharField(max_length=50, unique=True)
     email = models.EmailField(max_length=300, unique=True)
-    viewers = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, blank=True, related_name="users"
-    )
 
     img = models.ImageField(
-        default="1.png", upload_to="ProfileImg", null="True", blank="True"
+        default="1.png", upload_to="ProfileImg", null=True, blank=True
     )
     cover = models.ImageField(
-        default="bb-9.jpg", upload_to="Profilecover", null="True", blank="True"
+        default="bb-9.jpg", upload_to="Profilecover", null=True, blank=True
     )
-    bio = models.CharField(max_length=100, null=False, blank=True)
-    city = models.CharField(max_length=100, null=False, blank=True)
-    place = models.CharField(max_length=100, null=False, blank=True)
-    about_me = models.TextField(max_length=200, null=False, blank=True)
+    bio = models.CharField(max_length=100, null=True, blank=True)
+    city = models.CharField(max_length=100, null=True, blank=True)
+    place = models.CharField(max_length=100, null=True, blank=True)
+    about_me = models.TextField(max_length=200, null=True, blank=True)
     show_events = models.BooleanField(default=False)
     is_private = models.BooleanField(default=False)
     show_followers = models.BooleanField(default=True)
     show_following = models.BooleanField(default=True)
     check_followers = models.BooleanField(default=False)
+    
+    viewers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="users"
+    )
     slug = models.SlugField(null=True, blank=True)
 
     verified = models.BooleanField(default=False)

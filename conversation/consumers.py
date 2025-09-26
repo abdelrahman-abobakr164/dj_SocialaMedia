@@ -4,8 +4,10 @@ from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 from .models import Conversation, Message
 from django.utils import timezone
+import logging
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -14,24 +16,41 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.conversation_id = self.scope["url_route"]["kwargs"]["conversation_id"]
         self.room_group_name = f"chat_{self.conversation_id}"
 
+        logger.info(
+            f"WebSocket connection attempt for conversation {self.conversation_id}"
+        )
 
         if self.scope["user"].is_anonymous:
+            logger.warning(
+                f"Anonymous user attempted to connect to conversation {self.conversation_id}"
+            )
             await self.close()
             return
-
         self.user = self.scope["user"]
+        logger.info(
+            f"User {self.user.username} attempting to connect to conversation {self.conversation_id}"
+        )
 
         is_participant = await self.check_conversation_access()
         if not is_participant:
+            logger.warning(
+                f"User {self.user.username} denied access to conversation {self.conversation_id}"
+            )
             await self.close()
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
+        logger.info(
+            f"WebSocket connection established for user {self.user.username} in conversation {self.conversation_id}"
+        )
 
         await self.mark_messages_as_read()
 
     async def disconnect(self, close_code):
+        logger.info(
+            f"WebSocket disconnecting with code {close_code} for conversation {getattr(self, 'conversation_id', 'unknown')}"
+        )
         if hasattr(self, "room_group_name"):
             await self.channel_layer.group_discard(
                 self.room_group_name, self.channel_name
@@ -39,35 +58,46 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         try:
-            print(f"Received WebSocket message: {text_data}")
+            logger.info(f"=== WEBSOCKET MESSAGE RECEIVED ===")
+            logger.info(f"Raw data: {text_data}")
+            logger.info(f"User: {self.user.username} (ID: {self.user.id})")
+            logger.info(f"Conversation: {self.conversation_id}")
+            
             text_data_json = json.loads(text_data)
             message_type = text_data_json.get("type", "chat_message")
+            logger.info(f"Message type: {message_type}")
 
             if message_type == "chat_message":
                 message_content = text_data_json.get("message", "").strip()
-                print(f"Processing chat message: {message_content}")
+                logger.info(f"Processing chat message: '{message_content}'")
 
                 if message_content:
                     # Save message to database
                     message = await self.save_message(message_content)
-                    print(f"Message saved to database: {message}")
+                    if message:
+                        logger.info(f"Message saved to database with ID: {message['id']}")
 
-                    # Send message to room group
-                    await self.channel_layer.group_send(
-                        self.room_group_name,
-                        {
-                            "type": "chat_message",
-                            "message": message_content,
-                            "username": self.user.username,
-                            "user_id": self.user.id,
-                            "user_avatar": self.user.img.url if self.user.img else "",
-                            "timestamp": message["timestamp"],
-                            "message_id": str(message["id"]),
-                        },
-                    )
-                    print(f"Message sent to room group: {self.room_group_name}")
+                        # Send message to room group
+                        await self.channel_layer.group_send(
+                            self.room_group_name,
+                            {
+                                "type": "chat_message",
+                                "message": message_content,
+                                "username": self.user.username,
+                                "user_id": self.user.id,
+                                "user_avatar": self.user.img.url if self.user.img else "",
+                                "timestamp": message["timestamp"],
+                                "message_id": str(message["id"]),
+                            },
+                        )
+                        logger.info(f"Message broadcasted to room group: {self.room_group_name}")
+                    else:
+                        logger.error(f"Failed to save message to database")
+                else:
+                    logger.warning(f"Empty message content received")
 
             elif message_type == "typing":
+                logger.info(f"Processing typing indicator from {self.user.username}")
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
@@ -77,9 +107,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         "is_typing": text_data_json.get("is_typing", False),
                     },
                 )
+            else:
+                logger.warning(f"Unknown message type received: {message_type}")
 
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {e}. Raw data: {text_data}")
             await self.send(text_data=json.dumps({"error": "Invalid JSON"}))
+        except Exception as e:
+            logger.error(f"Unexpected error in receive: {e}", exc_info=True)
+            await self.send(text_data=json.dumps({"error": "Server error"}))
 
     async def chat_message(self, event):
         await self.send(
@@ -120,6 +156,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def save_message(self, content):
         try:
+            logger.info(f"Attempting to save message to conversation {self.conversation_id}")
             conversation = Conversation.objects.get(id=self.conversation_id)
             message = Message.objects.create(
                 conversation=conversation, sender=self.user, content=content
@@ -127,13 +164,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             conversation.updated_at = timezone.now()
             conversation.save()
-
+            logger.info(f"Message saved successfully with ID {message.id}")
             return {
                 "id": message.id,
                 "timestamp": message.timestamp.strftime("%H:%M"),
             }
         except Conversation.DoesNotExist:
+            logger.error(f"Conversation {self.conversation_id} does not exist")
             return None
+        except Exception as e:
+            logger.error(f"Error saving message: {e}", exc_info=True)
 
     @database_sync_to_async
     def mark_messages_as_read(self):

@@ -1,15 +1,12 @@
-from django.conf.urls import handler404, handler500
 from django.conf.urls.static import static
 from django.urls import path, include
 from django.conf import settings
 from django.contrib import admin
 
-from django.http import HttpResponse
-
 
 urlpatterns = [
     path("__debug__/", include("debug_toolbar.urls")),
-    path("boda/", admin.site.urls),
+    path("superuser/", admin.site.urls),
     path("accounts/", include("allauth.urls")),
     path("accounts/", include("accounts.urls")),
     path("notifications/", include("notifications.urls")),

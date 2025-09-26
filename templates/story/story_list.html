@@ -50,12 +50,11 @@
                             {% for user, stories in user_stories.items %}
                                 <div class="col-md-3 col-xss-6 pe-2 ps-2 mb-3">
                                     <a href="{% url 'story:view_story' stories.0.id %}" class="card story-card d-block border-0 shadow-xss rounded-3 overflow-hidden {% if not stories.0.is_viewed %}story-unviewed{% endif %}" 
-                                        {% if stories.0.image %}
-                                            style="background-image: url('{{ stories.0.image.url }}');"
-                                        {% elif stories.0.video %}
+                                        {% if stories.0.file.url|slice:'-3:' == 'mp4' %}
                                             style="background-color: #000;"
-                                        {% endif %}
-                                    >
+                                        {% else %}
+                                            style="background-image: url('{{ stories.0.file.url }}');"
+                                        {% endif %}>
                                         <div class="story-card-overlay"></div>
                                         <div class="card-body d-block w-100 position-absolute bottom-0 text-center">
                                             <figure class="avatar ms-auto me-auto mb-0 position-relative w50 z-index-1">
@@ -66,9 +65,9 @@
                                                 {% if user.verified %}
                                                     <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
                                                 {% endif %}
-                                                {% if user.is_admin %}
-                                                                                                                <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
 
+                                                {% if user.is_admin %}
+                                                    <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
                                                 {% endif %}
                                             </h4>
                                         </div>

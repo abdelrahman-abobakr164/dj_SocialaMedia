@@ -1,12 +1,11 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load django_htmx %}
 {% block title %}
 Contact Us
 {% endblock title %}
 
 {% block body %}
-    <div style='margin-top: 100px' class="container theme-dark-bg">
+    <div class="main-content bg-lightblue theme-dark-bg right-chat-active">
         <div class="middle-sidebar-bottom">
             <div class="middle-sidebar-left">
                 <div class="middle-wrap">
@@ -17,12 +16,12 @@ Contact Us
                         </div>
                         <div class="card-body p-lg-5 p-4 w-100 border-0 mb-0">
                             
-                        <form id="contact-us-form" method="POST" >
+                        <form id="contactForm" method="POST" >
                             {% csrf_token %}
                             <div class="row">
                                 <div class="col-lg-12 mb-3">
                                     <div class="form-group icon-input mb-3">
-                                        <i class="font-sm ti-email text-grey-500 pe-0"></i>
+                                        <label for='id_email' class="mont-font fw-600 font-xsss">Email Address</label>
                                         {{form.email}}
                                     </div>        
                                 </div>
@@ -31,13 +30,13 @@ Contact Us
                             <div class="row">   
                                 <div class="col-lg-12 mb-3">
                                     <div class="form-group icon-input mb-3">
-                                        <i class="ti-text font-sm text-grey-500 pe-0"></i>
-                                        {{form.message}}
+                                        <label for='message' class="mont-font fw-600 font-xsss">Message</label>
+                                        <textarea id='message' class="form-control mb-0 p-3 h100 bg-greylight lh-16" rows="5" name='message' placeholder="Write your message..."></textarea>
                                     </div>        
                                 </div>
                             </div>
-
                             <div class="col-lg-12 mb-0 mt-2 ps-0">
+                                <div id="response"></div>
                                 <button type="submit" class="btn bg-current text-center text-white font-xsss fw-600 p-3 w175 rounded-3 d-inline-block">Save</button>
                             </div>
                         </form>
@@ -50,3 +49,40 @@ Contact Us
         </div>            
     </div>
 {% endblock %}
+
+{% block script %}
+
+<script>
+    
+    document.getElementById("contactForm").addEventListener("submit", function(e){
+        e.preventDefault();
+
+        let form = e.target;
+        let formData = new FormData(form);
+
+        fetch("{% url 'contact-us' %}", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            let responseDiv = document.getElementById("response");
+            if(data.success){
+                responseDiv.innerHTML = "<p style='color:green'>" + data.message + "</p>";
+                form.reset();
+            } else {
+                if(data.errors){
+                    responseDiv.innerHTML = "<p style='color:red'>" + JSON.stringify(data.errors) + "</p>";
+                } else {
+                    responseDiv.innerHTML = "<p style='color:red'>" + data.message + "</p>";
+                }
+            }
+        })
+        .catch(error => console.error("Error:", error));
+    });
+</script>
+
+{% endblock script %}

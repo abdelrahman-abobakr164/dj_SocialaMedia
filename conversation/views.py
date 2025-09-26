@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Q, Prefetch, Count, Max
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q, Prefetch, Count, Max
 from django.contrib import messages
 from datetime import datetime
 
@@ -13,55 +13,82 @@ from conversation.models import *
 
 
 @login_required
-def group(request):
+def group(request, pk=None):
+    url = request.META.get("HTTP_REFERER")
     User = get_user_model()
-    form = CreateForm()
+    if pk:
+        conversation = Conversation.objects.get(pk=pk)
+        form = CreateForm(instance=conversation)
+    else:
+        conversation = None
+        form = CreateForm()
 
-    if request.method == "POST":
-        create_form = CreateForm(request.POST)
-        if create_form.is_valid():
-            group_name = create_form.cleaned_data.get("group_name")
-            group_image = request.FILES.get("group_image")
+    following = Follow.objects.filter(
+        Q(follower=request.user.id) | Q(following=request.user.id)
+    )
+
+    user_ids = set()
+    for f in following:
+        if f.follower_id != request.user.id:
+            user_ids.add(f.follower_id)
+        if f.following_id != request.user.id:
+            user_ids.add(f.following_id)
+    users = User.objects.filter(id__in=user_ids)
+
+    if request.user in conversation.admin.all() if pk else True:
+
+        if request.method == "POST":
+            create_form = CreateForm(request.POST, instance=conversation)
             participants = request.POST.getlist("participants")
+            admins = request.POST.getlist("admins")
+            if create_form.is_valid():
+                group_image = create_form.cleaned_data.get("group_image")
+                form_save = create_form.save(commit=False)
+                form_save.is_group = True
 
-            conversation = Conversation.objects.create(
-                is_group=True, group_name=group_name
-            )
+                if group_image:
+                    image_extensions = group_image.name.split(".")[-1]
+                    if image_extensions in ["jpg", "png", "JPG", "PNG"]:
+                        form_save.group_image = group_image
+                    else:
+                        messages.warning(request, "Invalid image format")
+                        return redirect(url)
 
-            if group_image:
-                image_extensions = group_image.name.split(".")[-1]
-                if image_extensions in ["jpg", "png", "JPG", "PNG"]:
-                    conversation.group_image = group_image
-                    conversation.save()
+                if not participants or participants == request.user.username:
+                    messages.warning(request, "Please Select Participants")
+                    return redirect(url)
+
+                form_save.save()
+
+                if pk == None:
+                    conversation = Conversation.objects.get(
+                        group_name=create_form.cleaned_data.get("group_name"),
+                    )
+                conversation.admin.set(admins)
+                conversation.admin.add(request.user)
+                conversation.participants.set(participants)
+                conversation.participants.add(request.user)
+                conversation.save()
+
+                if "/conversations/group/" == request.path:
+                    messages.success(request, "Group Created Successfully!")
                 else:
-                    messages.warning(request, "Invalid image format")
-                    return redirect("group")
-
-            conversation.participants.set(participants)
-            conversation.participants.add(request.user)
-            conversation.save()
-
-            messages.success(request, "Group created successfully!")
-            return redirect("group")
-        else:
-            messages.error(request, "Invalid form data")
-            return redirect("group")
+                    messages.success(
+                        request, "You'v been update Your Group Successfully!"
+                    )
+                return redirect(f"/conversations/{conversation.id}/")
+            else:
+                messages.error(request, f"Invalid form data ")
+                return redirect(url)
 
     else:
-        following = Follow.objects.filter(
-            Q(follower=request.user.id) | Q(following=request.user.id)
-        )
-
-        user_ids = set()
-        for f in following:
-            if f.follower_id != request.user.id:
-                user_ids.add(f.follower_id)
-            if f.following_id != request.user.id:
-                user_ids.add(f.following_id)
-        users = User.objects.filter(id__in=user_ids)
+        messages.warning(request, "You'r not admin to do this")
+        return redirect(url)
 
     return render(
-        request, "conversation/create_group.html", {"users": users, "form": form}
+        request,
+        "conversation/group.html",
+        {"users": users, "form": form, "conversation": conversation},
     )
 
 
@@ -166,9 +193,13 @@ def chat_room(request, pk):
                         "GIF",
                         "pdf",
                     ]
-                    file_read = file.read()
-                    if file.name.split(".")[-1] in extensions:
-                        if len(file_read) <= 1024 * 1024 * 10:
+                    file_size = file.read()
+                    file_name = str(file.name)
+                    file_extension = (
+                        file_name.split(".")[-1] if "." in file_name else ""
+                    )
+                    if file_extension in extensions:
+                        if len(file_size) <= 1024 * 1024 * 10:
                             MessageAttachment.objects.create(
                                 file=file,
                                 message=message,
@@ -181,7 +212,7 @@ def chat_room(request, pk):
                             return redirect(url)
                     else:
                         messages.warning(
-                            request, f"The File Extension is not Supported"
+                            request, f"The {file_name} Extension is not Supported"
                         )
                         message.delete()
                         return redirect(url)

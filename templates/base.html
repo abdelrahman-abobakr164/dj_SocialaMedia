@@ -69,16 +69,16 @@
         {% include 'parts/navbar.html' %}
 
         {% if messages %}
-            <div style='margin-top:100px; margin-left: 335px; margin-right: 60px; margin-bottom: -120px'>
+            <div id='response' style='margin-top:100px; margin-left: 335px; margin-right: 60px; margin-bottom: -120px'>
             {% for msg in messages %}
                 {% if msg.level == 40 %}
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <div id='response' class="alert alert-danger alert-dismissible fade show" role="alert">
                     {{msg}}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
                     </button>
                 </div>
                 {% else %}
-                <div  class="alert alert-{{msg.tags}} alert-dismissible fade show" style='margin-bottom:30px; margin-top:20px' role="alert">
+                <div id='response' class="alert alert-{{msg.tags}} alert-dismissible fade show" style='margin-bottom:30px; margin-top:20px' role="alert">
                     {{msg}}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
                     </button>

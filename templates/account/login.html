@@ -5,7 +5,26 @@ Login
 {% endblock title %}
 
 {% block body %}
-
+    <style>
+        input{
+            display:block;
+            width:100%;
+            padding:0.375rem 0.75rem;
+            font-size: 1rem;
+            line-height: 3;
+            color: #212529;
+            background-color: #fff;
+            background-clip: padding-box;
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15 ease-in-out;
+        }
+        input:focus{
+            border-color: #86b7fe;
+            outline: 0;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25)
+        }
+    </style>
     <div class="row">
         <div class="col-xl-5 d-none d-xl-block p-0 vh-100 bg-image-cover bg-no-repeat" style="background-image: url({% static '/images/login-bg.jpg' %});"></div>
         <div class="col-xl-7 vh-100 align-items-center d-flex bg-white rounded-3 overflow-hidden">
@@ -14,7 +33,6 @@ Login
                     <h2 class="fw-700 display1-size display2-md-size mb-3">Login into <br>your account</h2>
                     <form method='POST'>
                         {% csrf_token %}
-                        
                         {% if form.errors %}
                             <div class="alert alert-danger">
                                 {% for field, errors in form.errors.items %}
@@ -30,7 +48,7 @@ Login
                             <input type="email" name='login' id="id_login" class="style2-input ps-5 form-control text-grey-900 font-xsss fw-600" placeholder="Your Email Address">                        
                         </div>
                         <div class="form-group icon-input mb-1">
-                            <input type="password" name='password' id="id_password" class="style2-input ps-5 form-control text-grey-900 font-xss ls-3" placeholder="Password">
+                            {{form.password}}
                             <i class="font-sm ti-lock text-grey-500 pe-0"></i>
                         </div>
                         <div class="form-check text-left mb-3">
@@ -44,7 +62,7 @@ Login
                     <div class="col-sm-12 p-0 text-left">
                         <h6 class="text-grey-500 font-xsss fw-500 mt-0 mb-0 lh-32">Dont have account <a href="{% url 'account_signup' %}" class="fw-700 ms-1">Register</a></h6>
                     </div>
-                    <div class="col-sm-12 p-0 text-center mt-2">
+                    <div class="col-sm-12 p-0 text-center mt-5">
                         
                         <h6 class="mb-0 d-inline-block bg-white fw-500 font-xsss text-grey-500 mb-3">Or, Sign in with your social account </h6>
                         

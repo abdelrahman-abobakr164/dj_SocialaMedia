@@ -1,7 +1,7 @@
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse, JsonResponse
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Prefetch
 from django.core.mail import send_mail
@@ -10,8 +10,8 @@ from django.conf import settings
 
 from accounts.utils import generate_follow_suggestions
 from notifications.models import Notification
-from accounts.forms import ContactForm
-from accounts.models import Follow, Contact
+from accounts.forms import *
+from accounts.models import Follow
 from conversation.models import *
 from core.models import *
 
@@ -36,7 +36,7 @@ def create_checkout_session(request, user_id):
                             "product_data": {
                                 "name": "Get Verified",
                             },
-                            "unit_amount": 250,  # $2.50 in cents
+                            "unit_amount": 250,
                         },
                         "quantity": 1,
                     }
@@ -57,7 +57,7 @@ def create_checkout_session(request, user_id):
 def stripe_webhook(request):
     payload = request.body
     sig_header = request.META["HTTP_STRIPE_SIGNATURE"]
-    webhook_secret = "whsec_GnmNhv3KnathMR1pVUmhlYx1VeIyCm49"
+    webhook_secret = "whsec_71ciZDknZ6mBfYoAo1okqFWFt4Em17Ls"
 
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
@@ -163,54 +163,14 @@ def profile(request, slug):
 def settings(request):
     user = get_object_or_404(User, username=request.user.username)
     if request.method == "POST":
-        img = request.FILES.get("img")
-        cover = request.FILES.get("cover")
-        show_events = request.POST.get("show_events")
-        is_private = request.POST.get("is_private")
-        show_followers = request.POST.get("show_followers")
-        show_following = request.POST.get("show_following")
-        check_followers = request.POST.get("check_followers")
-
-        user.first_name = request.POST.get("first_name")
-        user.last_name = request.POST.get("last_name")
-        user.bio = request.POST.get("bio")
-        user.city = request.POST.get("city")
-        user.place = request.POST.get("place")
-        user.about_me = request.POST.get("about_me")
-
-        if img:
-            user.img = img
-        if cover:
-            user.cover = cover
-
-        if show_events == "on":
-            user.show_events = True
-        else:
-            user.show_events = False
-
-        if show_followers == "on":
-            user.show_followers = True
-        else:
-            user.show_followers = False
-
-        if show_following == "on":
-            user.show_following = True
-        else:
-            user.show_following = False
-
-        if check_followers == "on":
-            user.check_followers = True
-        else:
-            user.check_followers = False
-
-        if is_private == "on":
-            user.is_private = True
-        else:
-            user.is_private = False
-
-        user.save()
-        return redirect("settings")
-    return render(request, "accounts/settings.html", {"profile": user})
+        form = UserForm(request.POST, request.FILES, instance=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your Information Has Been Updated")
+            return redirect("settings")
+    else:
+        form = UserForm(instance=user)
+    return render(request, "accounts/settings.html", {"profile": user, "form": form})
 
 
 @login_required
@@ -494,5 +454,17 @@ def contact_us(request):
         contanct_form = ContactForm(request.POST)
         if form.is_valid():
             contanct_form.save()
-            messages.success(request, "Thank you for contacting us!")
+            send_mail(
+                subject="Sociala Media Contact-us",
+                from_email=form.cleaned_data.get("email"),
+                message=form.cleaned_data.get("message"),
+                recipient_list=[settings.EMAIL_HOST_USER],
+            )
+
+            return JsonResponse(
+                {"success": True, "message": "Thanks i'll get back to you soon."}
+            )
+        else:
+            return JsonResponse({"success": False, "message": "Don't Mess"}, status=400)
+
     return render(request, "accounts/contact_us.html", {"form": form})

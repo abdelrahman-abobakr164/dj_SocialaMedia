@@ -9,9 +9,8 @@ class Story(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="stories"
     )
-    image = models.ImageField(upload_to="stories/", null=True, blank=True)
-    video = models.FileField(upload_to="stories/", null=True, blank=True)
-    caption = models.CharField(max_length=100)
+    file = models.FileField(upload_to="stories/", null=True, blank=True)
+    caption = models.CharField(max_length=100, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(blank=True, null=True)
 

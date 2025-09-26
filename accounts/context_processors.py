@@ -4,7 +4,7 @@ from notifications.models import Notification
 
 
 def follow_suggestions(request):
-    if request.path == "admin":
+    if "superuser" in request.path:
         return {}
     else:
         if request.user.is_authenticated:

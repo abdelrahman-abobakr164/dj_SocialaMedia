@@ -11,14 +11,6 @@ else:
 DEFAULT_FROM_EMAIL = f'Sociala {env("EMAIL_HOST_USER")}'
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
 gunicorn => installed apps
-.gitignore
-GitHub
-Change the Admin Name
-ACCOUNT_USERNAME_BLACKLIST = ["admin","boda","administrator","moderator","staff","superuser","support","help","root","username"]
-
-in webserver = update the gunicorn DELETE THE "app:app" and write the project_name.wsgi:application
-add all environment variables and in render.com = add it webserver add PYTHON_VERSION
-create superuser if you created a DB in VPS
 
 collect static
 media storage = cloudinary for small projects
@@ -27,6 +19,17 @@ media storage = cloudinary for small projects
     migrations 
     add the variables in .env
     and go to (render, etc..) adding in webserver environment variables
+
+.gitignore
+GitHub
+Change the Admin Name
+ACCOUNT_USERNAME_BLACKLIST = ["admin","boda","administrator","moderator","staff","superuser","support","help","root","username"]
+
+google submit for verify
+in webserver = update the gunicorn DELETE THE "app:app" and write the project_name.wsgi:application
+add all environment variables and in render.com = add it webserver add PYTHON_VERSION
+create superuser if you created a DB in VPS
+
 
 
 "django.contrib.sitemaps" => installed apps

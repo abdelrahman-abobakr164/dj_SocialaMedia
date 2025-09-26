@@ -156,7 +156,7 @@ def upload(request):
 
                     else:
                         messages.error(
-                            request, f"the file {file_name} is not supported"
+                            request, f"the file {file_extension} is not supported"
                         )
 
             else:
@@ -213,7 +213,7 @@ def post_update(request, pk):
                 )
 
                 if file_extension in extensions:
-                    PostMedia.objects.create(
+                    PostMedia.objects.update_or_create(
                         post=post_obj,
                         file=file,
                         content_type=file.content_type.split("/")[0],
@@ -251,7 +251,7 @@ def post_delete(request, id):
     post = get_object_or_404(Post, id=id)
     if request.user == post.user or request.user.is_admin:
         post.delete()
-        return redirect(url)
+        return redirect('/')
     else:
         return redirect(url)
 

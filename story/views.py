@@ -9,22 +9,17 @@ from .models import Story, StoryView
 @login_required
 def create_story(request):
     if request.method == "POST":
-        image = request.FILES.get("image")
-        video = request.FILES.get("video")
+        file = request.FILES.get("file")
         caption = request.POST.get("caption")
 
-        if not image and not video:
+        if file:
+            story = Story(user=request.user, caption=caption)
+            story.file = file
+            story.save()
+
+        else:
             return redirect("story:story_list")
 
-        if image:
-            story = Story(user=request.user, caption=caption)
-            story.image = image
-
-        if video:
-            story = Story(user=request.user, caption=caption)
-            story.video = video
-
-        story.save()
         return redirect("story:story_list")
 
     return render(request, "story/create_story.html")

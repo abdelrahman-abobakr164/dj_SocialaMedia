@@ -1,12 +1,18 @@
 from django import forms
-from django.contrib.auth import get_user_model
+from .models import Conversation
 
 
-class CreateForm(forms.Form):
+class CreateForm(forms.ModelForm):
     group_name = forms.CharField(
         required=True,
         widget=forms.TextInput(
             attrs={"class": "form-control", "placeholder": "Enter group name"}
         ),
     )
+    group_image = forms.ImageField(
+        required=False, widget=forms.FileInput(attrs={"class": "custom-file-inpu"})
+    )
 
+    class Meta:
+        model = Conversation
+        fields = ["group_name", "group_image"]

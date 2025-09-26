@@ -15,8 +15,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY")
 
-STRIPE_PUBLISHABLE_KEY = "pk_test_51Q3xnYH4IAM7G10vw0mAzfEqkajCpWH5PuIrYJziEdvBURYUnHzQXitK8ntYVdqoGknPH0fw9p8cHoErROxU1eGu00xRPC5XiA"
-STRIPE_SECRET_KEY = "sk_test_51Q3xnYH4IAM7G10vjZxB1hYy3pSjbEypfl8OkJh7j6AbDCMw4fLXPiTp1t1A6Yh8CfGDK1gXZMudT4m0wcOqTET200aouCIE60"
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY")
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 if ENVIRONMENT == "development":
@@ -24,14 +24,14 @@ if ENVIRONMENT == "development":
 else:
     DEBUG = False
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "eager-badly-crayfish.ngrok-free.app"]
+ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
 CSRF_TRUSTED_ORIGINS = ["https://eager-badly-crayfish.ngrok-free.app"]
 
 INSTALLED_APPS = [
-    "daphne",
+    # "daphne",
     "jazzmin",
-    "channels",
+    # "channels",
     "accounts",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -49,12 +49,8 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "django.contrib.sitemaps",
-    "django_bootstrap5",
-    "django_social_share",
-    "debug_toolbar",
 ]
 
-# Jazzmin Settings
 JAZZMIN_SETTINGS = {
     "site_title": "Social Media Admin",
     "site_header": "Social Media",
@@ -79,7 +75,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 ROOT_URLCONF = "social_media.urls"
@@ -128,23 +123,24 @@ AUTH_USER_MODEL = "accounts.user"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+if ENVIRONMENT == "development":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
-
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": env("DB_NAME"),
-#         "USER": env("DB_USER"),
-#         "PASSWORD": env("DB_PASSWORD"),
-#         "HOST": env("DB_HOST"),
-#         "PORT": env("DB_PORT"),
-#     }
-# }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": env("DB_NAME"),
+            "USER": env("DB_USER"),
+            "PASSWORD": env("DB_PASSWORD"),
+            "HOST": env("DB_HOST"),
+            "PORT": env("DB_PORT"),
+        }
+    }
 
 
 SITE_ID = 1
@@ -187,11 +183,11 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"]  # R
+STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-MEDIA_URL = "/media/"  # R
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")  # R
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -239,7 +235,10 @@ ACCOUNT_USERNAME_BLACKLIST = [
     "root",
 ]
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+if ENVIRONMENT == "development":
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
@@ -247,3 +246,29 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = f'Sociala {env("EMAIL_HOST_USER")}'
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
+
+
+CELERY_BROKER_URL = env("REDIS_URL")
+CELERY_RESULT_BACKEND = env("REDIS_URL")
+
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Africa/Cairo"
+CELERY_ENABLE_UTC = False
+
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_RETRY = True
+CELERY_BROKER_CONNECTION_MAX_RETRIES = 10
+
+CELERY_TASK_ALWAYS_EAGER = False
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_STORE_EAGER_RESULT = False
+CELERY_TASK_TRACK_STARTED = False
+CELERY_TASK_TIME_LIMIT = 30 * 60
+
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000

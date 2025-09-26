@@ -19,21 +19,12 @@
                             <form method="post" enctype="multipart/form-data" class="p-4">
                                 {% csrf_token %}
                                 
-                                <div class="form-group">
-                                    <label class="mont-font fw-600 font-xsss mb-2">Upload Media</label>
-                                    <div class="custom-file">
-                                        <input type="file" name="image" accept="image/*" class="custom-file-input" id="imageInput">
-                                        <label class="custom-file-label" for="imageInput">Choose image</label>
-                                    </div>
-                                    <small class="form-text text-muted">Upload an image for your story</small>
-                                </div>
-                                
                                 <div class="form-group mt-3">
                                     <div class="custom-file">
-                                        <input type="file" name="video" accept="video/*" class="custom-file-input" id="videoInput">
-                                        <label class="custom-file-label" for="videoInput">Choose video</label>
+                                        <input type="file" name="file" class="custom-file-input" id="fileInput">
+                                        <label class="custom-file-label" for="fileInput">Choose Your Media</label>
                                     </div>
-                                    <small class="form-text text-muted">Or upload a video for your story</small>
+                                    <small class="form-text text-muted">Upload Your video or Image for your story</small>
                                 </div>
                                 <div class="form-group mt-3">
                                     <label for="caption">Caption:</label><br>
