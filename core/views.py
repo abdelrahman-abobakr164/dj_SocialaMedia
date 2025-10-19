@@ -137,41 +137,44 @@ def upload(request):
         caption = request.POST.get("caption")
         extensions = ["mp4", "mp3", "JPG", "jpg", "png", "PNG"]
 
-        if files or caption:
-            post = Post.objects.create(user=request.user, caption=caption)
-            if files:
+        if tags:
+            tag, created = Tag.objects.get_or_create(name=tags)
+        if files:
+            for file in files:
+                file_name = str(file.name)
+                file_extension = (
+                    file_name.lower().split(".")[-1] if "." in file_name else ""
+                )
 
-                for file in files:
-                    file_name = str(file.name)
-                    file_extension = (
-                        file_name.lower().split(".")[-1] if "." in file_name else ""
+                if file_extension in extensions:
+                    post = Post.objects.create(user=request.user, caption=caption)
+
+                    PostMedia.objects.create(
+                        post=post,
+                        file=file,
+                        content_type=file.content_type.split("/")[0],
                     )
 
-                    if file_extension in extensions:
-                        PostMedia.objects.create(
-                            post=post,
-                            file=file,
-                            content_type=file.content_type.split("/")[0],
-                        )
+                    post.tag.add(tag) if tags else None
+                    post.save()
 
-                    else:
-                        messages.error(
-                            request, f"the file {file_extension} is not supported"
-                        )
+                else:
+                    messages.error(
+                        request, f"the file {file_extension} is not supported"
+                    )
+                    return redirect(url)
 
-            else:
-                PostMedia.objects.create(
-                    post=post,
-                    content_type="body",
-                )
-                post.body = request.POST.get("body")
-
-            tag, created = Tag.objects.get_or_create(name=tags)
-            post.tag.add(tag)
-            post.save()
-            return redirect(url)
         else:
-            return redirect(url)
+            PostMedia.objects.create(
+                post=post,
+                content_type="body",
+            )
+            post.body = request.POST.get("body")
+
+            post.tag.add(tag) if tags else None
+
+            post.save()
+        return redirect(url)
     else:
         return redirect(url)
 
@@ -218,17 +221,17 @@ def post_update(request, pk):
                         file=file,
                         content_type=file.content_type.split("/")[0],
                     )
+                    post_obj.caption = caption
+                    post_obj.body = ""
+
                 else:
                     messages.error(
                         request, f"the file {file_extension} is not supported"
                     )
                     return redirect("post-update", pk=pk)
 
-            post_obj.caption = caption
-
-        elif caption:
-            post_obj.caption = caption
         else:
+            post_obj.caption = ""
             post_obj.body = request.POST.get("body")
 
         tag, created = Tag.objects.get_or_create(name=tags)
@@ -251,7 +254,7 @@ def post_delete(request, id):
     post = get_object_or_404(Post, id=id)
     if request.user == post.user or request.user.is_admin:
         post.delete()
-        return redirect('/')
+        return redirect("/")
     else:
         return redirect(url)
 

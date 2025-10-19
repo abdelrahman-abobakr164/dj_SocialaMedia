@@ -24,18 +24,7 @@
             width: 100%;
             overflow: hidden;
         }
-        .post-media-wrapper img,
-        .post-media-wrapper video {
-            max-width: 100%;
-            max-height: 340px;
-            width: auto;
-            height: auto;
-            border-radius: 12px;
-            object-fit: cover;
-            display: block;
-            margin: 0 auto;
-            background: #f4f6fb;
-        }
+        .post-media-wrapper img
         .replies-section {
         margin-left: 2.5rem;
         margin-top: 1.2rem;
@@ -142,9 +131,19 @@
                                     {% if i.content_type == 'image' %}
                                         <a href="{{ i.file.url }}" data-lightbox="roadtri"><img src="{{i.file.url}}" alt="image"></a>
                                     {% elif i.content_type == 'video' %}
-                                        <video controls>
-                                            <source src="{{i.file.url}}" type="video/mp4">
-                                        </video>
+                                        <div class="card w-100 shadow-xss rounded-xxl border-0 p-4 mb-3">
+                                            <div class="card-body p-0 mb-3 rounded-3 overflow-hidden">
+                                                <video style="width: 100%; max-height: 500px;" autoplay controls loop>
+                                                    <source src="{{i.file.url}}" type="video/mp4">
+                                                </video>
+                                            </div>
+
+                                            {% if i.content_type == 'video' and post.caption %}
+                                                <div class="card-body p-0 me-lg-5">
+                                                    <p class="fw-500 text-grey-500 lh-26 font-xssss w-100 mb-2">{{post.caption}} <a href="{% url 'post-detail' post.pk %}" class="fw-600 text-primary ms-2">See more</a></p>
+                                                </div>
+                                            {% endif %}
+                                        </div>
                                     {% endif %}
                                 </div>
                             {% endfor %}

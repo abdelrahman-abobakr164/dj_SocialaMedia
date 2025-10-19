@@ -1,5 +1,7 @@
 from celery import Celery
 import os
+from celery.schedules import crontab
+
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "social_media.settings")
 
@@ -11,6 +13,6 @@ app.autodiscover_tasks()
 app.conf.beat_schedule = {
     "delete-expired-stories-every-hour": {
         "task": "story.tasks.expired_story",
-        "schedule": 1.0,
+        "schedule": crontab(minute=0, hour="*"),
     }
 }

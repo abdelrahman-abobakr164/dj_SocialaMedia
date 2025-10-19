@@ -78,8 +78,7 @@
             font-size: 0.89rem;
             font-weight: 500;
         }
-        /* Post media modern style */
-        .post-media-wrapper {
+        .post-media-wrapper img {
             display: flex;
             justify-content: center;
             align-items: center;
@@ -93,8 +92,7 @@
             padding: 1.2rem 1.2rem 1rem 1.2rem;
             transition: box-shadow 0.2s, border 0.2s;
         }
-        .post-media-wrapper img,
-        .post-media-wrapper video {
+        .post-media-wrapper img {
             max-width: 100%;
             max-height: 340px;
             width: auto;
@@ -186,27 +184,24 @@
                         <div class="col-lg-{% if friends.exists or events.exists or users %}8 {% else %}8 mx-auto {% endif %}">
                     {% endif %}
 
-
-                        {% if not posts %}
-                            <div class="card w-100 shadow-xss rounded-xxl border-0 ps-4 pt-4 pe-4 pb-3 mb-3 mt-3">
-                                <div class="card-body p-0">
-                                    <a class=" font-xssss fw-600 text-grey-500 card-body p-0 d-flex align-items-center"><i class="btn-round-sm font-xs text-primary feather-edit-3 me-2 bg-greylight"></i>Create Post</a>
-                                </div>
-                                <form method='POST' action='{% url "upload" %}' enctype='multipart/form-data' class="chat-form">
-                                    {% csrf_token %}
-                                    <div class="card-body p-0 mt-3 position-relative">
-                                        <figure class="avatar position-absolute ms-2 mt-1 top-5"><img src="{{request.user.img.url}}" alt="image" class="shadow-sm rounded-circle w30"></figure>
-                                        <textarea name="body" class="h100 bor-0 w-100 rounded-xxl p-2 ps-5 font-xssss text-grey-500 fw-500 border-light-md theme-dark-bg" cols="30" rows="10" placeholder="What's on your mind?"></textarea>
-                                        <input name='caption' type="text" class=' border-dark-md theme-dark-bg mb-2' placeholder="Caption...">
-                                        <input name='tags' type="text" class=' border-dark-md theme-dark-bg' placeholder="Tags"><br><br>
-                                    </div>
-                                    <div class="card-body d-flex p-0 mt-0">
-                                        <i class="font-lg text-success feather-image mt-2"></i><input name="files" multiple='true' type="file">
-                                        <button class="bg-current"><i class="ti-arrow-right text-white"></i></button>
-                                    </div>
-                                </form>
+                        <div class="card w-100 shadow-xss rounded-xxl border-0 ps-4 pt-4 pe-4 pb-3 mb-3 mt-3">
+                            <div class="card-body p-0">
+                                <a class=" font-xssss fw-600 text-grey-500 card-body p-0 d-flex align-items-center"><i class="btn-round-sm font-xs text-primary feather-edit-3 me-2 bg-greylight"></i>Create Post</a>
                             </div>
-                        {% endif %}
+                            <form method='POST' action='{% url "upload" %}' enctype='multipart/form-data' class="chat-form">
+                                {% csrf_token %}
+                                <div class="card-body p-0 mt-3 position-relative">
+                                    <figure class="avatar position-absolute ms-2 mt-1 top-5"><img src="{{request.user.img.url}}" alt="image" class="shadow-sm rounded-circle w30"></figure>
+                                    <textarea name="body" class="h100 bor-0 w-100 rounded-xxl p-2 ps-5 font-xssss text-grey-500 fw-500 border-light-md theme-dark-bg" cols="30" rows="10" placeholder="What's on your mind?"></textarea>
+                                    <input name='caption' type="text" class=' border-dark-md theme-dark-bg mb-2' placeholder="Caption...">
+                                    <input name='tags' type="text" class=' border-dark-md theme-dark-bg' placeholder="Tags"><br><br>
+                                </div>
+                                <div class="card-body d-flex p-0 mt-0">
+                                    <i class="font-lg text-success feather-image mt-2"></i><input name="files" multiple='true' type="file">
+                                    <button class="bg-current"><i class="ti-arrow-right text-white"></i></button>
+                                </div>
+                            </form>
+                        </div>
 
 						{% for post in posts %}
 							<div style='max-width:80%' class="card  shadow-xss rounded-xxl border-0 p-4 mb-4">
@@ -249,19 +244,30 @@
 										<p class="fw-500 text-grey-500 lh-26 font-xssss w-100">{{post.body|truncatewords:1}}<a href="{% url 'post-detail' post.pk %}" class="fw-600 text-primary ms-2">See more</a></p>
 									</div>
 								{% else %}
-                                    {% if post.caption %}
-                                        <div class="card-body p-0 me-lg-5">
-                                            <p class="fw-500 text-grey-500 lh-26 font-xssss w-100">{{post.caption|truncatewords:1}}<a href="{% url 'post-detail' post.pk %}" class="fw-600 text-primary ms-2">See more</a></p>
-                                        </div>
-                                    {% endif %}
+
                                     {% for i in post.media.all %}
+                                        {% if i.content_type == 'image' and post.caption %}
+                                            <div class="card-body p-0 me-lg-5">
+                                                <p class="fw-500 text-grey-500 lh-26 font-xssss w-100">{{post.caption|truncatewords:1}}<a href="{% url 'post-detail' post.pk %}" class="fw-600 text-primary ms-2">See more</a></p>
+                                            </div>
+                                        {% endif %}
                                         <div class="post-media-wrapper">
                                             {% if i.content_type == 'image' %}
-                                                <a href="{{ i.file.url }}" data-lightbox="roadtri"><img src="{{i.file.url}}" alt="image"></a>
+                                                <a href="{{ i.file.url }}" data-lightbox="roadtri"><img  src="{{i.file.url}}" alt="image"></a>
                                             {% elif i.content_type == 'video' %}
-                                                <video controls>
-                                                    <source src="{{i.file.url}}" type="video/mp4">
-                                                </video>
+                                                <div class="card w-100 shadow-xss rounded-xxl border-0 p-4 mb-3">
+                                                    <div class="card-body p-0 mb-3 rounded-3 overflow-hidden">
+                                                        <video style="width: 100%; max-height: 500px;" autoplay controls loop>
+                                                            <source src="{{i.file.url}}" type="video/mp4">
+                                                        </video>
+                                                    </div>
+
+                                                    {% if i.content_type == 'video' and post.caption %}
+                                                        <div class="card-body p-0 me-lg-5">
+                                                            <p class="fw-500 text-grey-500 lh-26 font-xssss w-100 mb-2">{{post.caption}} <a href="{% url 'post-detail' post.pk %}" class="fw-600 text-primary ms-2">See more</a></p>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
                                             {% endif %}
                                         </div>
                                     {% endfor %}

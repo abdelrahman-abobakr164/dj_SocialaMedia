@@ -162,7 +162,7 @@ Chat / {{ chat.id }}
                                 <div class='d-flex'>
                                     <input name="attachment" {% if CheckUserStatus %}disabled {% endif %}style='width:150px' multiple='true' type="file">
                                     <input id="chat-message-input" class='bg-secondary' {% if CheckUserStatus %}disabled{% endif %} name='content' type="text" placeholder="type">
-                                    <button id="chat-message-submit" type='button' {% if CheckUserStatus %}disabled{% endif %} class="bg-current"><i class="ti-arrow-right text-white"></i></button>
+                                    <button id="chat-message-submit" type='submit' {% if CheckUserStatus %}disabled{% endif %} class="bg-current"><i class="ti-arrow-right text-white"></i></button>
                                 </div>
                             </form>
                         </div> 

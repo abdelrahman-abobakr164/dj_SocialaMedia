@@ -22,7 +22,6 @@ class Story(models.Model):
     def __str__(self):
         return f"{self.user}'s story"
 
-    @property
     def is_expired(self):
         return datetime.now().timestamp() > self.expires_at.timestamp()
 

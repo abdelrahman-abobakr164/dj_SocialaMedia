@@ -21,8 +21,7 @@
             width: 100%;
             overflow: hidden;
         }
-        .post-media-wrapper img,
-        .post-media-wrapper video {
+        .post-media-wrapper img{
             max-width: 100%;
             max-height: 340px;
             width: auto;
@@ -122,10 +121,10 @@
                                     {% endif %}
 
                                     {% if request.user == post.user %}
-                                    <div class="card-body p-0 d-flex mt-2">
-                                        <i class="feather-alert-circle text-grey-500 me-3 font-lg"></i>
-                                        <a href="{% url 'post-update' post.id %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Edit<span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Edit Your Post</span></h4></a>
-                                    </div>
+                                        <div class="card-body p-0 d-flex mt-2">
+                                            <i class="feather-alert-circle text-grey-500 me-3 font-lg"></i>
+                                            <a href="{% url 'post-update' post.id %}"><h4 class="fw-600 text-grey-900 font-xssss mt-0 me-4">Edit<span class="d-block font-xsssss fw-500 mt-1 lh-3 text-grey-500">Edit Your Post</span></h4></a>
+                                        </div>
                                     {% endif %}
                                 </div>
                             {% endif %}
@@ -147,9 +146,13 @@
                                     {% if i.content_type == 'image' %}
                                         <a href="{{ i.file.url }}" data-lightbox="roadtri"><img src="{{i.file.url}}" alt="image"></a>
                                     {% elif i.content_type == 'video' %}
-                                        <video controls>
-                                            <source src="{{i.file.url}}" type="video/mp4">
-                                        </video>
+                                        <div class="card w-100 shadow-xss rounded-xxl border-0 p-4 mb-3">
+                                            <div class="card-body p-0 mb-3 rounded-3 overflow-hidden">
+                                                <video style="width: 100%; max-height: 600px;" autoplay controls loop>
+                                                    <source src="{{i.file.url}}" type="video/mp4">
+                                                </video>
+                                            </div>
+                                        </div>
                                     {% endif %}
                                 </div>
                             {% endfor %}
