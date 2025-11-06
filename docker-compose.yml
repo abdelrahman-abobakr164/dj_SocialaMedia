@@ -1,0 +1,108 @@
+services:
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: postgres_container
+
+  #   restart: always
+
+  #   env_file:
+  #     - .env
+    
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+    
+  #   ports:
+  #     - "5432:5432"
+
+  #   # healthcheck:
+  #   #   test: ["CMD-SHELL", "pg_isready -U postgres -d SocialaMedia"]
+  #   #   interval: 10s
+  #   #   timeout: 5s
+  #   #   retries: 5
+  #   #   start_period: 10s
+
+
+  web:
+    build: .
+    container_name: SocialaMedia
+    command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn social_media.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"
+
+
+    env_file:
+      - ".env"
+    # environment:
+    #   SECRET_KEY: django-insecure-rv)bqjp46nc1l763!ki6pbqqo210*-5(y%#lkf76z_@9j=1!oy
+    #   STRIPE_PUBLISHABLE_KEY: pk_test_51Q3xnYH4IAM7G10vw0mAzfEqkajCpWH5PuIrYJziEdvBURYUnHzQXitK8ntYVdqoGknPH0fw9p8cHoErROxU1eGu00xRPC5XiA
+    #   STRIPE_SECRET_KEY: sk_test_51Q3xnYH4IAM7G10vjZxB1hYy3pSjbEypfl8OkJh7j6AbDCMw4fLXPiTp1t1A6Yh8CfGDK1gXZMudT4m0wcOqTET200aouCIE60
+    #   REDIS_URL: redis://default:29JN2PR5g4c5REoZ3ft6EVK1WYpqZaUV@redis-12859.c270.us-east-1-3.ec2.redns.redis-cloud.com:12859
+    #   EMAIL_HOST_USER: abdelrahmanforlearn@gmail.com
+    #   EMAIL_HOST_PASSWORD: rzdxrfmhuamzmrgr
+    #   DEBUG: "True"
+
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+
+    restart: unless-stopped
+  
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # depends_on:
+    #   db:
+    #     condition: service_healthy 
+
+  celery_worker:
+    build: .
+    command: celery -A social_media worker -l INFO --pool=solo
+    container_name: celery_worker_container
+    volumes:
+      - .:/app
+
+    # environment:
+    #   SECRET_KEY: django-insecure-rv)bqjp46nc1l763!ki6pbqqo210*-5(y%#lkf76z_@9j=1!oy
+    #   STRIPE_PUBLISHABLE_KEY: pk_test_51Q3xnYH4IAM7G10vw0mAzfEqkajCpWH5PuIrYJziEdvBURYUnHzQXitK8ntYVdqoGknPH0fw9p8cHoErROxU1eGu00xRPC5XiA
+    #   STRIPE_SECRET_KEY: sk_test_51Q3xnYH4IAM7G10vjZxB1hYy3pSjbEypfl8OkJh7j6AbDCMw4fLXPiTp1t1A6Yh8CfGDK1gXZMudT4m0wcOqTET200aouCIE60
+    #   REDIS_URL: redis://default:29JN2PR5g4c5REoZ3ft6EVK1WYpqZaUV@redis-12859.c270.us-east-1-3.ec2.redns.redis-cloud.com:12859
+    #   EMAIL_HOST_USER: abdelrahmanforlearn@gmail.com
+    #   EMAIL_HOST_PASSWORD: rzdxrfmhuamzmrgr
+    #   DEBUG: 'True'
+    
+    env_file:
+      - .env
+
+    depends_on:
+      web:
+        condition: service_started
+    
+    restart: unless-stopped
+
+  celery_beat:
+    build: .
+    container_name: celery_beat_container
+    volumes:
+      - .:/app
+    command: celery -A social_media beat -l INFO
+
+    env_file:
+      - .env
+
+    # environment:
+    #   SECRET_KEY: django-insecure-rv)bqjp46nc1l763!ki6pbqqo210*-5(y%#lkf76z_@9j=1!oy
+    #   STRIPE_PUBLISHABLE_KEY: pk_test_51Q3xnYH4IAM7G10vw0mAzfEqkajCpWH5PuIrYJziEdvBURYUnHzQXitK8ntYVdqoGknPH0fw9p8cHoErROxU1eGu00xRPC5XiA
+    #   STRIPE_SECRET_KEY: sk_test_51Q3xnYH4IAM7G10vjZxB1hYy3pSjbEypfl8OkJh7j6AbDCMw4fLXPiTp1t1A6Yh8CfGDK1gXZMudT4m0wcOqTET200aouCIE60
+    #   REDIS_URL: redis://default:29JN2PR5g4c5REoZ3ft6EVK1WYpqZaUV@redis-12859.c270.us-east-1-3.ec2.redns.redis-cloud.com:12859
+    #   EMAIL_HOST_USER: abdelrahmanforlearn@gmail.com
+    #   EMAIL_HOST_PASSWORD: rzdxrfmhuamzmrgr
+    #   DEBUG: 'True'
+    
+    depends_on:
+      web:
+        condition: service_started
+    
+    restart: unless-stopped

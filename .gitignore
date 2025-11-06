@@ -24,6 +24,8 @@ staticfiles/
 
 celerybeat-schedule
 celerybeat.pid
+celerybeat-schedule-shm
+celerybeat-schedule-wal
 
 .vscode/
 .idea/
