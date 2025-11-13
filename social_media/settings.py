@@ -187,18 +187,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Channel Layers Configuration for WebSocket
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": (
-            "channels.layers.InMemoryChannelLayer"
-            if DEBUG
-            else "channels_redis.core.RedisChannelLayer"
-        ),
-        "CONFIG": {} if DEBUG else {"hosts": [("127.0.0.1", 6379)]},
-    },
-}
-
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",

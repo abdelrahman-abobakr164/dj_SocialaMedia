@@ -98,7 +98,7 @@
     <div class="card shadow-lg w-100" style="max-width: 500px;">
         <div class="card-body p-4">
             {% if '/conversations/group/' == request.path %}
-                <h2 class="card-title text-center mb-4">Create Group</h2>
+                <h2 class="card-title text-center mb-4">Create a Group</h2>
             {% else %}
                 <h2 class="card-title text-center mb-4">{{ conversation.group_name }}'s Group </h2>
             {% endif %}
@@ -110,7 +110,7 @@
                         <span class="input-group-text"><i class="ti-user font-xs"></i></span>
                         {{form.group_name}}
                     </div>
-                </div>
+                </div><hr>
                 <div class="form-group mb-5">
                     <label for='id_group_image' class="font-weight-bold">Group Image</label>
                     <div class="input-group">
@@ -119,29 +119,31 @@
                             {{form.group_image}}
                         </div>
                     </div>
-                </div>
-                <div class="form-group mb-4">
-                    <label for="admins" class="font-weight-bold">Add Admins</label>
-
-                    <select multiple class="form-control custom-participants-select" id="admins" name="admins">
-                        {% for user in users %}
-                            <option value="{{ user.id }}" {% if user in conversation.admin.all %} selected {% endif %}  data-img="{{ user.img.url }}">{{ user.username }}</option>
+                </div><hr>
+                {% if pk %}
+                    <div class="form-group mb-4">
+                        <h5 class="font-weight-bold">ADMINS:</h5>
+                        {% for user in conversation.admin.all %}
+                            <input type="checkbox" {% if user in conversation.admin.all %} checked {% endif %} value="{{ user.id }}" name="admins" id="admins">
+                            <img src="{{user.img.url}}" style='border-radius: 50%; max-height: 25px' alt="Admin's Img">
+                            <label for="admins" class="font-weight-bold">{% if request.user.username == user.username %} You {% else %} {{ user.username }}{% endif %} </label><br>
                         {% endfor %}
-                    </select>
-                    <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple users.</small>
-                </div>
-                <div class="form-group mb-4">
-                    <label for="participants" class="font-weight-bold">Add Participants</label>
+                    </div><hr>
+                {% endif %}
 
-                    <select multiple class="form-control custom-participants-select" id="participants" name="participants">
-                        {% for user in users %}
-                            <option value="{{ user.id }}" {% if user in conversation.participants.all %} selected {% endif %}  data-img="{{ user.img.url }}">{{ user.username }}</option>
-                        {% endfor %}
-                    </select>
-                    <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple users.</small>
+                <div class="form-group mb-4">
+                    <h5 class="font-weight-bold">PARTICIPANTS:</h5>
+                    {% for user in users %}
+                        <input type="checkbox" {% if user in conversation.participants.all %} checked {% endif %} value="{{ user.id }}" name="participants" id="participants">
+                        <img src="{{user.img.url}}" style='border-radius: 50%; max-height: 25px' alt="Admin's Img">
+                        <label for="participants" class="font-weight-bold">{{ user.username }}</label><br>
+                    {% endfor %}
                 </div>
                 
                 <button type="submit" class="btn btn-primary w-100 py-2 font-weight-bold">Submit</button>
+                {% if pk %}
+                <button class="btn btn-danger mt-2 w-100 py-2 font-weight-bold"><a style='color:black' href="{% url 'delete-group' conversation.pk %}">Delete</a></button>
+                {% endif %}
             </form>
         </div>
     </div>

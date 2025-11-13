@@ -4,8 +4,6 @@ from notifications.models import Notification
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 
-# Create your views here.
-
 
 @login_required
 def alerts(request):
@@ -32,14 +30,12 @@ def mark_all_as_read(request):
         recipient=request.user, read=False
     ).order_by("-created_at")[:5]
 
-    for noti in notifications:
-        mark_as_read(request, noti.id)
+    # for noti in notifications:
+    #     mark_as_read(request, noti.id)
 
-    """
     Notification.objects.filter(
         Q(id__in=notifications) & Q(recipient=request.user)
     ).update(read=True)
-    """
 
     return redirect(url)
 

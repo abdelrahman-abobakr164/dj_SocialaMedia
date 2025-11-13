@@ -20,11 +20,17 @@ Chats
                                 {% for msg in Convs %}
                                     <li>
                                         <a href="{% url 'conversation' msg.pk %}" class="rounded-3 bg-lightblue theme-light-bg">
+                                            
                                             <form class="form-check mt-1" method='POST'>
                                                 {% csrf_token %}
                                                 <input type="hidden" name="convid" value='{{msg.pk}}'>
-                                                <button class='btn bg-danger text-dark' style=' width: 100%;' type="submit">Block</button>
+                                                {% if msg.is_group %}
+                                                    <button class='btn bg-danger text-dark' style=' width: 100%;' type="submit">Leave</button>
+                                                {% else %}
+                                                    <button class='btn bg-danger text-dark' style=' width: 100%;' type="submit">Block</button>
+                                                {% endif %}
                                             </form>
+
                                             <div class="email-user">
                                                 {% if msg.unread_count %}
                                                     <span class="ms-2 text-success me-3">{{msg.unread_count}}</span>
@@ -32,9 +38,9 @@ Chats
 
                                                 {% if msg.is_group %}
                                                     {% if msg.group_image %}
-                                                        <img style='border-radius: 50%' src="{{ msg.group_image.url }}" alt="user" class="w35 me-2">
+                                                        <img style='border-radius: 50%;' src="{{ msg.group_image.url }}" alt="user" class="w35 me-2">
                                                     {% else %}
-                                                        <i class="feather-users text-dark font-xl ms-1 rounded-circle"></i>
+                                                        <i class="feather-users text-dark font-xl rounded-circle"></i>
                                                     {% endif %}
                                                         <h5 class='font-xssss text-grey-900 mb-0 mt-0 fw-700'>{{msg.group_name}}</h5>
 

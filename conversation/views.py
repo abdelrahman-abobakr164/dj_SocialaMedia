@@ -8,8 +8,7 @@ from django.contrib.auth import get_user_model
 from conversation.forms import CreateForm
 from accounts.models import Follow
 from conversation.models import *
-
-# Create your views here.
+from core.utils import *
 
 
 @login_required
@@ -24,7 +23,8 @@ def group(request, pk=None):
         form = CreateForm()
 
     following = Follow.objects.filter(
-        Q(follower=request.user.id) | Q(following=request.user.id)
+        Q(follower=request.user.id, status=Follow.Status.ACCEPTED)
+        | Q(following=request.user.id, status=Follow.Status.ACCEPTED)
     )
 
     user_ids = set()
@@ -33,6 +33,11 @@ def group(request, pk=None):
             user_ids.add(f.follower_id)
         if f.following_id != request.user.id:
             user_ids.add(f.following_id)
+
+    if pk:
+        for user in conversation.participants.all():
+            if user.id != request.user.id:
+                user_ids.add(user.id)
     users = User.objects.filter(id__in=user_ids)
 
     if request.user in conversation.admin.all() if pk else True:
@@ -40,19 +45,10 @@ def group(request, pk=None):
         if request.method == "POST":
             create_form = CreateForm(request.POST, instance=conversation)
             participants = request.POST.getlist("participants")
-            admins = request.POST.getlist("admins")
+            admins = request.POST.getlist("admins", [request.user])
             if create_form.is_valid():
-                group_image = create_form.cleaned_data.get("group_image")
                 form_save = create_form.save(commit=False)
                 form_save.is_group = True
-
-                if group_image:
-                    image_extensions = group_image.name.split(".")[-1]
-                    if image_extensions in ["jpg", "png", "JPG", "PNG"]:
-                        form_save.group_image = group_image
-                    else:
-                        messages.warning(request, "Invalid image format")
-                        return redirect(url)
 
                 if not participants or participants == request.user.username:
                     messages.warning(request, "Please Select Participants")
@@ -64,19 +60,20 @@ def group(request, pk=None):
                     conversation = Conversation.objects.get(
                         group_name=create_form.cleaned_data.get("group_name"),
                     )
-                conversation.admin.set(admins)
+                conversation.admin.set(admins) if pk else None
                 conversation.admin.add(request.user)
-                conversation.participants.set(participants)
+                conversation.participants.set(participants + admins)
                 conversation.participants.add(request.user)
                 conversation.save()
 
                 if "/conversations/group/" == request.path:
                     messages.success(request, "Group Created Successfully!")
+                    return redirect("conversations")
                 else:
                     messages.success(
                         request, "You'v been update Your Group Successfully!"
                     )
-                return redirect(f"/conversations/{conversation.id}/")
+                return redirect(url)
             else:
                 messages.error(request, f"Invalid form data ")
                 return redirect(url)
@@ -85,11 +82,35 @@ def group(request, pk=None):
         messages.warning(request, "You'r not admin to do this")
         return redirect(url)
 
-    return render(
-        request,
-        "conversation/group.html",
-        {"users": users, "form": form, "conversation": conversation},
-    )
+    context = {
+        "users": users,
+        "form": form,
+        "conversation": conversation,
+        "pk": pk,
+    }
+    return render(request, "conversation/group.html", context)
+
+
+@login_required
+def leave(request, pk):
+    group = get_object_or_404(Conversation, pk=pk)
+    if group.is_group and request.user in group.participants.all():
+        if request.user in group.admin.all():
+            if request.user == group.admin.all():
+                group.delete()
+            else:
+                group.admin.remove(request.user)
+        group.participants.remove(request.user)
+        group.save()
+        return redirect("conversations")
+
+
+@login_required
+def delete_group(request, pk):
+    group = get_object_or_404(Conversation, pk=pk)
+    if group.is_group and request.user in group.admin.all():
+        group.delete()
+        return redirect("conversations")
 
 
 @login_required
@@ -121,7 +142,18 @@ def conversations(request):
     if request.method == "POST":
         convid = request.POST.get("convid")
         if convid:
-            conversation = Conversation.objects.get(id=convid)
+            conversation = get_object_or_404(Conversation, id=convid)
+
+            if conversation.is_group:
+                if request.user in conversation.participants.all():
+                    if request.user == conversation.admin.first():
+                        conversation.delete()
+                    else:
+                        conversation.admin.remove(request.user) if request.user in conversation.admin.all() else None
+                        conversation.participants.remove(request.user)
+                        conversation.save()
+                    return redirect("conversations")
+
             ConvFilter = conversation.other_participants(request.user)
             if ConvFilter.is_superuser == False:
 
@@ -142,6 +174,8 @@ def conversations(request):
 def chat_room(request, pk):
     url = request.META.get("HTTP_REFERER")
     chat = get_object_or_404(Conversation, pk=pk)
+    if request.user not in chat.participants.all():
+        return redirect("conversations")
 
     follow = Follow.objects.filter(
         Q(following=request.user) | Q(following=chat.other_participants(request.user)),
@@ -164,7 +198,11 @@ def chat_room(request, pk):
     else:
         CheckUserStatus = False
 
-    msgs = Message.objects.filter(conversation=chat).order_by("timestamp")
+    msgs = (
+        Message.objects.select_related("conversation")
+        .filter(conversation=chat)
+        .order_by("timestamp")
+    )
     Message.objects.filter(
         ~Q(sender=request.user),
         conversation=chat,
@@ -183,23 +221,8 @@ def chat_room(request, pk):
                     sender=request.user,
                 )
                 for file in files:
-                    extensions = [
-                        "mp4",
-                        "mp3",
-                        "jpg",
-                        "JPG",
-                        "png",
-                        "PNG",
-                        "GIF",
-                        "pdf",
-                    ]
-                    file_size = file.read()
-                    file_name = str(file.name)
-                    file_extension = (
-                        file_name.split(".")[-1] if "." in file_name else ""
-                    )
-                    if file_extension in extensions:
-                        if len(file_size) <= 1024 * 1024 * 10:
+                    if file_validation(file):
+                        if validate_file_size(file):
                             MessageAttachment.objects.create(
                                 file=file,
                                 message=message,
@@ -211,9 +234,7 @@ def chat_room(request, pk):
                             message.delete()
                             return redirect(url)
                     else:
-                        messages.warning(
-                            request, f"The {file_name} Extension is not Supported"
-                        )
+                        messages.warning(request, f"File Extension is not Supported")
                         message.delete()
                         return redirect(url)
 
@@ -256,6 +277,7 @@ def block(request):
 
     if request.method == "POST":
         convid = request.POST.get("convid")
+
         if convid:
             UserStatus.objects.get(user=request.user, conversation__id=convid).delete()
             return redirect(request.META.get("HTTP_REFERER"))

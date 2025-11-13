@@ -12,11 +12,11 @@
                         <a {% if request.path != msg.get_absolute_url %} href='{% url "conversation" msg.pk %}' {% endif %} class="{% if request.path == msg.get_absolute_url %}bg-lightblue theme-light-bg {% else %}bg-white theme-dark-bg {% endif %}   p-2 w-100 border-0 rounded-3 text-dark text-grey-600 text-left fw-600 font-xsss d-flex align-items-center">
                             {% if msg.is_group %}
                                 {% if msg.group_image %}
-                                <img style='border-radius: 50%' src="{{ msg.group_image.url }}" alt="user" class="w35 me-2">
+                                <img style='border-radius: 50%' src="{{ msg.group_image.url }}" alt="user" class="w35 ">
                                 {% else %}
                                 <i class="feather-users text-dark font-xl ms-1 rounded-circle"></i>
                                 {% endif %}
-                                <h5 class='font-xssss d-flex text-grey-900 mb-0 mt-0 fw-700 '>{{msg.group_name}} <h5><a href="{% url 'edit_group' msg.id %}" style='color:black'>...</a></h5></h5>
+                                <h5 class='font-xssss d-flex text-grey-900 mb-0 mt-0 fw-700 ms-2'>{{msg.group_name}} </h5>
                             
                             {% elif request.user == msg.participants.first %}
                                 <img style='border-radius: 50px' src="{{ msg.participants.last.img.url }}" alt="user" class="w35 me-2">

@@ -10,9 +10,9 @@ from django.conf import settings
 
 from accounts.utils import generate_follow_suggestions
 from notifications.models import Notification
-from accounts.forms import *
 from accounts.models import Follow
 from conversation.models import *
+from accounts.forms import *
 from core.models import *
 
 import stripe
@@ -182,14 +182,7 @@ def follow_suggestions(request):
 @login_required
 def pending_requests(request):
     followers = Follow.objects.filter(following=request.user, status="pending")
-
-    return render(
-        request,
-        "accounts/pending-requests.html",
-        {
-            "followers": followers,
-        },
-    )
+    return render(request, "accounts/pending-requests.html", {"followers": followers})
 
 
 @login_required

@@ -8,6 +8,7 @@ from django.db.models import Q, Prefetch
 from django.views.generic import View
 from django.contrib import messages
 from accounts.models import Follow
+from core.utils import file_validation
 from story.models import *
 from core.models import *
 from core.forms import *
@@ -107,11 +108,12 @@ def home(request):
 
     posts = (
         Post.objects.prefetch_related(
+            "media",
             Prefetch(
                 "comments",
                 queryset=Comment.objects.filter(parent=None),
                 to_attr="none_parent_comment",
-            )
+            ),
         )
         .filter(
             Q(user__in=followers_post) | Q(user__verified=True) | Q(user=request.user)
@@ -135,20 +137,14 @@ def upload(request):
         files = request.FILES.getlist("files")
         tags = request.POST.get("tags")
         caption = request.POST.get("caption")
-        extensions = ["mp4", "mp3", "JPG", "jpg", "png", "PNG"]
 
         if tags:
             tag, created = Tag.objects.get_or_create(name=tags)
         if files:
             for file in files:
                 file_name = str(file.name)
-                file_extension = (
-                    file_name.lower().split(".")[-1] if "." in file_name else ""
-                )
-
-                if file_extension in extensions:
+                if file_validation(file_name):
                     post = Post.objects.create(user=request.user, caption=caption)
-
                     PostMedia.objects.create(
                         post=post,
                         file=file,
@@ -159,9 +155,7 @@ def upload(request):
                     post.save()
 
                 else:
-                    messages.error(
-                        request, f"the file {file_extension} is not supported"
-                    )
+                    messages.error(request, f"file extension is not supported")
                     return redirect(url)
 
         else:
@@ -199,7 +193,6 @@ def post_update(request, pk):
     comments = post_obj.comments.filter(
         parent=None,
     ).order_by("-like_count", "-created_at")
-    extensions = ["mp4", "mp3", "JPG", "jpg", "png", "PNG"]
 
     if request.method == "POST":
         files = request.FILES.getlist("files")
@@ -211,11 +204,7 @@ def post_update(request, pk):
 
             for file in files:
                 file_name = str(file.name)
-                file_extension = (
-                    file_name.lower().split(".")[-1] if "." in file_name else ""
-                )
-
-                if file_extension in extensions:
+                if file_validation(file_name):
                     PostMedia.objects.update_or_create(
                         post=post_obj,
                         file=file,
@@ -225,9 +214,7 @@ def post_update(request, pk):
                     post_obj.body = ""
 
                 else:
-                    messages.error(
-                        request, f"the file {file_extension} is not supported"
-                    )
+                    messages.error(request, f"file extension is not supported")
                     return redirect("post-update", pk=pk)
 
         else:
