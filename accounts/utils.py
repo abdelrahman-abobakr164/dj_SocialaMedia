@@ -10,15 +10,14 @@ User = get_user_model()
 def generate_follow_suggestions(user, max_results=5):
     suggestions = []
 
-    UIfollowing = (
-        Follow.objects.filter(follower=user, status="accepted")
-        .values_list("following", flat=True)
-        .exclude(following=user)
-    )
+    UIfollowing = user.following.values_list("following_id", flat=True)
+    print(UIfollowing)
 
     if UIfollowing.exists():
         FriendsOfUsers = (
-            Follow.objects.filter(follower__in=UIfollowing, status="accepted")
+            Follow.objects.filter(
+                follower__in=UIfollowing, status=Follow.Status.PENDING
+            )
             .values_list("following", flat=True)
             .exclude(following=user)
         )
@@ -37,7 +36,6 @@ def generate_follow_suggestions(user, max_results=5):
                 .annotate(follower_count=Count("followers"))
                 .order_by("-follower_count")
                 .exclude(id=user.id)[:remaining]
-                
             )
             suggestions.extend(popular_user.values_list("id", flat=True))
 

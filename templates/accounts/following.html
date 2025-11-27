@@ -28,11 +28,12 @@
                                             <li class="m-2"><h4 class="fw-700 font-sm">{{ i.followers_count.count }}<span class="font-xsssss fw-500 mt-1 text-grey-500 d-block">Follower</span></h4></li>
                                             <li class="m-2"><h4 class="fw-700 font-sm">{{ i.following_count.count }} <span class="font-xsssss fw-500 mt-1 text-grey-500 d-block">Following</span></h4></li>
                                         </ul>
-                                        
-                                        {% if i.is_follow %}
-                                            <a href="{% url 'unfollow' i.user.id %}" class="mt-4 p-0 btn p-2 lh-24 w100 ms-1 ls-3 d-inline-block rounded-xl bg-danger font-xsssss fw-700 ls-lg text-white">UNFOLLOW</a>
-                                        {% else %}
-                                            <a href="{% url 'send_follow' i.user.id %}" class="mt-4 p-0 btn p-2 lh-24 w100 ms-1 ls-3 d-inline-block rounded-xl bg-secondary font-xsssss fw-700 ls-lg text-white">FOLLOW</a>
+                                        {% if i.user != request.user %}
+                                            {% if i.is_following %}
+                                                <a href="{% url 'unfollow' i.user.id %}" class="mt-4 p-0 btn p-2 lh-24 w100 ms-1 ls-3 d-inline-block rounded-xl bg-danger font-xsssss fw-700 ls-lg text-white">UNFOLLOW</a>
+                                            {% else %}
+                                                <a href="{% url 'send_follow' i.user.id %}" class="mt-4 p-0 btn p-2 lh-24 w100 ms-1 ls-3 d-inline-block rounded-xl bg-secondary font-xsssss fw-700 ls-lg text-white">FOLLOW</a>
+                                            {% endif %}
                                         {% endif %}
                                     </div>
                                 </div>

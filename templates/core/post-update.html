@@ -85,6 +85,7 @@
         }
     </style>
 {% endblock meta_head %}
+
 {% block body %}
 
     <!-- main content -->
@@ -208,8 +209,7 @@
                                                             <i class="feather-check bg-success font-xs" style='border-radius:50px;'></i>
                                                         {% endif %}
                                                         {% if i.user.is_admin %}
-                                                                                                                        <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
-
+                                                            <i class="feather-check  font-xs" style='border-radius:50px; background-color: #FDD017'></i>
                                                         {% endif %}
                                                     </h4></a>
                                                     <span class="font-xssss fw-500 text-grey-500">{{ i.updated_at|timesince }} ago</span>

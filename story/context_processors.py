@@ -1,7 +1,7 @@
 from django.utils import timezone
-from django.db.models import Q, Exists, OuterRef
-from .models import Story, StoryView
 from accounts.models import Follow
+from .models import Story, StoryView
+from django.db.models import Q, Exists, OuterRef
 
 
 def user_stories(request):
@@ -15,11 +15,17 @@ def user_stories(request):
                 follower=request.user, status=Follow.Status.ACCEPTED
             ).values_list("following_id", flat=True)
 
-            stories = Story.objects.filter(
-                Q(user__in=following_ids) | Q(user=request.user), expires_at__gt=now
-            ).order_by("user", "-created_at")
+            stories = (
+                Story.objects.filter(
+                    Q(user__in=following_ids) | Q(user=request.user), expires_at__gt=now
+                )
+                .select_related("user")
+                .order_by("user", "-created_at")
+            )
 
-            is_viewed = StoryView.objects.filter(story=OuterRef("pk"), viewer=request.user)
+            is_viewed = StoryView.objects.filter(
+                story=OuterRef("pk"), viewer=request.user
+            )
 
             stories = stories.annotate(is_viewed=Exists(is_viewed)).order_by(
                 "is_viewed", "-created_at"

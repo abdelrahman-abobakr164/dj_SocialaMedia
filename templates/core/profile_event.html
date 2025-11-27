@@ -38,7 +38,7 @@
                                         </div>
                                         <div class="card-body p-0">
                                             <ul class="memberlist mt-4 mb-2 ms-0 d-inline-block">
-                                                {% for p in i.profile.all|slice:'4' %}
+                                                {% for p in i.user.all|slice:'4' %}
                                                     <li><a href="{% url 'profile' p.slug %}"><img src="{{ p.img.url }}" alt="user" class="w30 d-inline-block"></a></li>
                                                 {% endfor %}
                                                 <li class="last-member"><a href="#" class="bg-greylight fw-600 text-grey-500 font-xssss ls-3 text-center">+{{ i.profile.all.count }} </a></li>

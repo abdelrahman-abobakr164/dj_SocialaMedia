@@ -8,7 +8,7 @@ def follow_suggestions(request):
         return {}
     else:
         if request.user.is_authenticated:
-            friends = Follow.objects.filter(following=request.user, status="pending")
+            friends = Follow.objects.filter(following=request.user, status=Follow.Status.PENDING)
             users = generate_follow_suggestions(request.user)
             alerts = Notification.objects.filter(recipient=request.user, read=False)
 

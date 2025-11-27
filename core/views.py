@@ -19,11 +19,13 @@ User = get_user_model()
 @login_required
 def events(request):
     url = request.META.get("HTTP_REFERER")
-    events = Event.objects.filter(Q(city=request.user.city) | Q(user=request.user))
+    events = Event.objects.filter(
+        Q(city=request.user.city) | Q(user=request.user)
+    ).prefetch_related("user")
 
     s = request.GET.get("s")
     if s:
-        events = Event.objects.filter(Q(title__icontains=s))
+        events = Event.objects.filter(Q(title__icontains=s)).prefetch_related("user")
 
     if request.method == "POST":
         profile_id = request.POST.get("profile_id")
@@ -48,9 +50,9 @@ def profile_event(request, slug):
     s = request.GET.get("q")
 
     if user.show_events == False and request.user == user:
-        events = Event.objects.filter(user=user)
+        events = Event.objects.filter(user=user).prefetch_related("user")
     elif user.show_events == True:
-        events = Event.objects.filter(user=user)
+        events = Event.objects.filter(user=user).prefetch_related("user")
     else:
         events = []
 
@@ -78,13 +80,13 @@ def search(request):
         for user in users:
             if users.exists():
                 is_following = Follow.objects.filter(
-                    follower=request.user, following=user, status="accepted"
+                    follower=request.user, following=user, status=Follow.Status.ACCEPTED
                 ).exists()
                 if is_following:
                     btn = "UnFollow"
 
                 elif Follow.objects.filter(
-                    follower=request.user, following=user, status="pending"
+                    follower=request.user, following=user, status=Follow.Status.PENDING
                 ).exists():
                     btn = "Pending"
 
@@ -103,16 +105,18 @@ def search(request):
 def home(request):
     events = Event.objects.filter(user=request.user)
     followers_post = Follow.objects.filter(
-        follower=request.user, status="accepted"
+        follower=request.user, status=Follow.Status.ACCEPTED
     ).values_list("following", flat=True)
 
     posts = (
-        Post.objects.prefetch_related(
+        Post.objects.select_related("user")
+        .prefetch_related(
             "media",
             Prefetch(
                 "comments",
-                queryset=Comment.objects.filter(parent=None),
-                to_attr="none_parent_comment",
+                queryset=Comment.objects.filter(parent=None).select_related(
+                    "user", "parent"
+                ),
             ),
         )
         .filter(
@@ -175,9 +179,13 @@ def upload(request):
 
 class PostDetailView(LoginRequiredMixin, View):
     def get(self, request, pk, *args, **kwargs):
-        post = get_object_or_404(Post, id=pk)
-        comments = post.comments.filter(parent=None).order_by(
-            "-like_count", "-created_at"
+        post = (
+            Post.objects.select_related("user").prefetch_related("comments").get(id=pk)
+        )
+        comments = (
+            Comment.objects.filter(post=post, parent=None)
+            .select_related("user", "parent")
+            .order_by("-like_count", "-created_at")
         )
         form = CommentForm()
         return render(
@@ -189,10 +197,19 @@ class PostDetailView(LoginRequiredMixin, View):
 
 @login_required
 def post_update(request, pk):
-    post_obj = get_object_or_404(Post, pk=pk, user=request.user)
-    comments = post_obj.comments.filter(
-        parent=None,
-    ).order_by("-like_count", "-created_at")
+    post_obj = (
+        Post.objects.select_related("user")
+        .prefetch_related("media", "comments")
+        .get(pk=pk, user=request.user)
+    )
+    comments = (
+        Comment.objects.filter(
+            post=post_obj,
+            parent=None,
+        )
+        .select_related("user", "parent")
+        .order_by("-like_count", "-created_at")
+    )
 
     if request.method == "POST":
         files = request.FILES.getlist("files")
@@ -286,7 +303,7 @@ def create_comment(request):
 @login_required
 def comment_update(request, id):
     url = request.META.get("HTTP_REFERER")
-    comment = get_object_or_404(Comment, id=id)
+    comment = Comment.objects.select_related("post").get(id=id)
     if comment.user == request.user:
         if request.method == "POST":
             message = request.POST.get("comment")

@@ -1,16 +1,19 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from notifications.utils import filter_notifications_by_date_range
-from notifications.models import Notification
 from django.contrib.auth.decorators import login_required
+from notifications.models import Notification
 from django.db.models import Q
 
 
 @login_required
 def alerts(request):
-    notifications = Notification.objects.filter(recipient=request.user, read=False)
+    notifications = Notification.objects.filter(
+        recipient=request.user, read=False
+    ).select_related("actor")
     today_notifs = filter_notifications_by_date_range(
         notifications, request.GET.get("date_filter")
     )
+
     return render(
         request, "notifications/notifications.html", {"today_notifs": today_notifs}
     )

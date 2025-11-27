@@ -149,7 +149,11 @@ def conversations(request):
                     if request.user == conversation.admin.first():
                         conversation.delete()
                     else:
-                        conversation.admin.remove(request.user) if request.user in conversation.admin.all() else None
+                        (
+                            conversation.admin.remove(request.user)
+                            if request.user in conversation.admin.all()
+                            else None
+                        )
                         conversation.participants.remove(request.user)
                         conversation.save()
                     return redirect("conversations")
@@ -180,7 +184,7 @@ def chat_room(request, pk):
     follow = Follow.objects.filter(
         Q(following=request.user) | Q(following=chat.other_participants(request.user)),
         Q(follower=chat.other_participants(request.user)) | Q(follower=request.user),
-        status="accepted",
+        status=Follow.Status.PENDING,
     ).exists()
 
     convstatus = UserStatus.objects.filter(conversation=chat, status="Block").exists()

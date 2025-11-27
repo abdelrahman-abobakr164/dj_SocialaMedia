@@ -34,16 +34,18 @@ def story_list(request):
 def view_story(request, story_id):
     story = get_object_or_404(Story, id=story_id)
 
-    if story.is_expired:
+    if story.is_expired():
         messages.warning(request, "The Story is Expired")
         return redirect("story:story_list")
 
-    if story.user != request.user and request.user.is_admin == False:
+    if story.user != request.user:
         StoryView.objects.get_or_create(story=story, viewer=request.user)
 
-    user_stories = Story.objects.filter(
-        user=story.user, expires_at__gt=timezone.now()
-    ).order_by("-created_at")
+    user_stories = (
+        Story.objects.filter(user=story.user, expires_at__gt=timezone.now())
+        .select_related("user")
+        .order_by("-created_at")
+    )
 
     current_index = list(user_stories).index(story)
 
@@ -84,6 +86,7 @@ def story_viewers(request, story_id):
 
     viewers = (
         StoryView.objects.filter(story=story)
+        .select_related("viewer")
         .exclude(viewer=story.user)
         .order_by("-viewed_at")
     )

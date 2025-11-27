@@ -131,19 +131,23 @@ def profile(request, slug):
         posts = []
 
     is_following = Follow.objects.filter(
-        follower=request.user, following=user, status="accepted"
+        follower=request.user, following=user, status=Follow.Status.ACCEPTED
     ).exists()
 
     is_follower = Follow.objects.filter(
-        follower=user, following=request.user, status="accepted"
+        follower=user, following=request.user, status=Follow.Status.ACCEPTED
     ).exists()
 
     is_pending = Follow.objects.filter(
-        follower=request.user, following=user, status="pending"
+        follower=request.user, following=user, status=Follow.Status.PENDING
     ).exists()
 
-    FollowingCount = Follow.objects.filter(follower=user, status="accepted").count()
-    FollowersCount = Follow.objects.filter(following=user, status="accepted").count()
+    FollowingCount = Follow.objects.filter(
+        follower=user, status=Follow.Status.ACCEPTED
+    ).count()
+    FollowersCount = Follow.objects.filter(
+        following=user, status=Follow.Status.ACCEPTED
+    ).count()
 
     context = {
         "profile": user,
@@ -181,39 +185,54 @@ def follow_suggestions(request):
 
 @login_required
 def pending_requests(request):
-    followers = Follow.objects.filter(following=request.user, status="pending")
-    return render(request, "accounts/pending-requests.html", {"followers": followers})
+    PendingList = Follow.objects.filter(
+        following=request.user, status=Follow.Status.PENDING
+    )
+
+    FollowersCount = 0
+
+    for i in PendingList:
+        FollowersCount = Follow.objects.filter(
+            following=i.follower, status=Follow.Status.ACCEPTED
+        ).count()
+
+    context = {"FollowersCount": FollowersCount, "PendingList": PendingList}
+    return render(request, "accounts/pending-requests.html", context)
 
 
 @login_required
 def user_following(request, slug):
     user = get_object_or_404(User, slug=slug)
     if user.show_following == True or request.user == user:
-        following = Follow.objects.filter(follower=user, status="accepted")
+        following = Follow.objects.filter(follower=user, status=Follow.Status.ACCEPTED)
 
         following_list = []
         for i in following:
 
-            is_follow = Follow.objects.filter(
-                follower=request.user, following=i.following, status="accepted"
+            is_following = Follow.objects.filter(
+                follower=request.user,
+                following=i.following,
+                status=Follow.Status.ACCEPTED,
+            ).exists()
+
+            is_follower = Follow.objects.filter(
+                following=request.user,
+                follower=i.following,
+                status=Follow.Status.ACCEPTED,
             ).exists()
 
             followers_count = Follow.objects.filter(
-                following=i.following, status="accepted"
+                following=i.following, status=Follow.Status.ACCEPTED
             )
 
             following_count = Follow.objects.filter(
-                follower=i.following, status="accepted"
+                follower=i.following, status=Follow.Status.ACCEPTED
             )
-
-            is_follower = Follow.objects.filter(
-                following=request.user, follower=i.following, status="accepted"
-            ).exists()
 
             following_list.append(
                 {
                     "user": i.following,
-                    "is_follow": is_follow,
+                    "is_following": is_following,
                     "followers_count": followers_count,
                     "following_count": following_count,
                     "is_follower": is_follower,
@@ -233,25 +252,30 @@ def user_following(request, slug):
 def user_followers(request, slug):
     user = get_object_or_404(User, slug=slug)
     if user.show_followers == True or request.user == user:
-        followers = Follow.objects.filter(following=user, status="accepted")
+        followers = Follow.objects.filter(following=user, status=Follow.Status.ACCEPTED)
 
         followers_list = []
+
         for i in followers:
             is_following = Follow.objects.filter(
-                follower=request.user, following=i.follower, status="accepted"
+                follower=request.user,
+                following=i.follower,
+                status=Follow.Status.ACCEPTED,
+            ).exists()
+
+            is_follower = Follow.objects.filter(
+                following=request.user,
+                follower=i.follower,
+                status=Follow.Status.ACCEPTED,
             ).exists()
 
             followers_count = Follow.objects.filter(
-                following=i.follower, status="accepted"
+                following=i.follower, status=Follow.Status.ACCEPTED
             ).count()
 
             following_count = Follow.objects.filter(
-                follower=i.follower, status="accepted"
+                follower=i.follower, status=Follow.Status.ACCEPTED
             ).count()
-
-            is_follower = Follow.objects.filter(
-                follower=i.follower, following=request.user, status="accepted"
-            ).exists()
 
             followers_list.append(
                 {
@@ -295,7 +319,9 @@ def send_follow(request, id):
             return redirect(url)
 
     elif user.check_followers == False or request.user.is_admin:
-        Follow.objects.create(follower=request.user, following=user, status="accepted")
+        Follow.objects.create(
+            follower=request.user, following=user, status=Follow.Status.ACCEPTED
+        )
 
         follower = User.objects.get(id=request.user.id)
         following = User.objects.get(id=user.id)
@@ -314,7 +340,9 @@ def send_follow(request, id):
         return redirect(url)
 
     else:
-        Follow.objects.create(follower=request.user, following=user, status="pending")
+        Follow.objects.create(
+            follower=request.user, following=user, status=Follow.Status.PENDING
+        )
         messages.success(request, "Follow request sent successfully")
         return redirect(url)
 
@@ -392,7 +420,7 @@ def cancel_request(request, id):
         Follow,
         follower=request.user,
         following=target_user,
-        status="pending",
+        status=Follow.Status.PENDING,
     )
     if notification.exists():
         notification.delete()
@@ -411,11 +439,11 @@ def viewers_list(request, slug):
         visitors = profile.viewers.all()
 
         following_ids = Follow.objects.filter(
-            follower=profile, status="accepted"
+            follower=profile, status=Follow.Status.ACCEPTED
         ).values_list("following_id", flat=True)
 
         follower_ids = Follow.objects.filter(
-            following=profile, status="accepted"
+            following=profile, status=Follow.Status.ACCEPTED
         ).values_list("follower_id", flat=True)
 
         visitor_list = []

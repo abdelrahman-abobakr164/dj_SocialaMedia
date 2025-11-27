@@ -23,7 +23,7 @@ class Story(models.Model):
         return f"{self.user}'s story"
 
     def is_expired(self):
-        return datetime.now().timestamp() > self.expires_at.timestamp()
+        return datetime.now().date() > self.expires_at.date()
 
     class Meta:
         verbose_name = "Story"
