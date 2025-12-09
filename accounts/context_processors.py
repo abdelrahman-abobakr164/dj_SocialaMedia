@@ -8,9 +8,15 @@ def follow_suggestions(request):
         return {}
     else:
         if request.user.is_authenticated:
-            friends = Follow.objects.filter(following=request.user, status=Follow.Status.PENDING)
+            friends = Follow.objects.filter(
+                following=request.user, status=Follow.Status.PENDING
+            )
             users = generate_follow_suggestions(request.user)
-            alerts = Notification.objects.filter(recipient=request.user, read=False)
+            alerts = (
+                Notification.objects.filter(recipient=request.user, read=False)
+                .select_related("actor", "content_type")
+                .prefetch_related("content_object")
+            )
 
             return {
                 "users": users,

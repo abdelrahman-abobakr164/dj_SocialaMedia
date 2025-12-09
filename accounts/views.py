@@ -1,14 +1,13 @@
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from accounts.utils import generate_follow_suggestions
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Prefetch
 from django.core.mail import send_mail
 from django.contrib import messages
 from django.conf import settings
-
-from accounts.utils import generate_follow_suggestions
 from notifications.models import Notification
 from accounts.models import Follow
 from conversation.models import *
@@ -302,21 +301,19 @@ def send_follow(request, id):
     user = get_object_or_404(User, id=id)
 
     if request.user == user:
-        messages.error(request, "You cannot send follow request to yourself")
+        messages.warning(request, "You cannot send follow request to yourself")
         return redirect(url)
 
     existing_request = Follow.objects.filter(
         follower=request.user, following=user
-    ).exists()
+    ).first()
 
     if existing_request:
-        if existing_request.status == "accepted":
-            messages.error(request, "You Already following this user")
-            return redirect(url)
+        if existing_request.status == Follow.Status.ACCEPTED:
+            messages.warning(request, "You are already following this user")
 
-        elif existing_request.status == "pending":
-            messages.error(request, "Request already pending")
-            return redirect(url)
+        elif existing_request.status == Follow.Status.PENDING:
+            messages.warning(request, "Request already pending")
 
     elif user.check_followers == False or request.user.is_admin:
         Follow.objects.create(
@@ -343,6 +340,7 @@ def send_follow(request, id):
         Follow.objects.create(
             follower=request.user, following=user, status=Follow.Status.PENDING
         )
+
         messages.success(request, "Follow request sent successfully")
         return redirect(url)
 
@@ -354,7 +352,7 @@ def user_unfollow(request, id):
     UserUnfollow = Follow.objects.filter(follower=request.user, following=user)
 
     if request.user == user:
-        messages.warning(request, "You Can't UnFollow Yourself")
+        return redirect("profile", slug=user.slug)
 
     elif UserUnfollow.exists():
         UserUnfollow.delete()

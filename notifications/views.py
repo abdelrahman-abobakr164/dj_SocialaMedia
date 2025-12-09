@@ -7,9 +7,12 @@ from django.db.models import Q
 
 @login_required
 def alerts(request):
-    notifications = Notification.objects.filter(
-        recipient=request.user, read=False
-    ).select_related("actor")
+    notifications = (
+        Notification.objects.filter(recipient=request.user)
+        .select_related("actor", "content_type")
+        .prefetch_related("content_object")
+        .order_by("read")
+    )
     today_notifs = filter_notifications_by_date_range(
         notifications, request.GET.get("date_filter")
     )
@@ -45,5 +48,5 @@ def mark_all_as_read(request):
 
 @login_required
 def delete_all(request):
-    Notification.objects.filter(recipient=request.user, read=False).delete()
+    Notification.objects.filter(recipient=request.user).delete()
     return redirect("notifications")

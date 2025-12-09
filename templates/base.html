@@ -159,104 +159,246 @@
    <script src="{% static 'js/scripts.js' %}"></script>
    <script src="{% static 'js/lightbox.js' %}"></script>
    
-   <script>
-       function toggleComments(sectionId) {
-           const commentsSection = document.getElementById(sectionId);
-           if (commentsSection.style.display === 'none') {
-               commentsSection.style.display = 'block';
-           } else {
-               commentsSection.style.display = 'none';
-           }
-       }
-       
-       function toggleReplies(sectionId) {
-           const repliesSection = document.getElementById(sectionId);
-           if (repliesSection.style.display === 'none') {
-               repliesSection.style.display = 'block';
-           } else {
-               repliesSection.style.display = 'none';
-           }
-       }
-       
-       function copyToClipboard(text) {
-           const tempInput = document.createElement('input');
-           tempInput.value = text;
-           document.body.appendChild(tempInput);
-           tempInput.select();
-           document.execCommand('copy');
-           document.body.removeChild(tempInput);
-           alert('Link copied to clipboard!');
-       }
-       
-       function createCommentHtml(comment) {
-           return `
-               <div class="comment-item d-flex mb-3">
-                   <figure class="avatar me-3">
-                       <img src="${comment.user_img}" alt="image" class="shadow-sm rounded-circle w35">
-                   </figure>
-                   <div class="comment-content bg-lightblue rounded-xxl p-2 w-100">
-                       <div class="d-flex justify-content-between">
-                           <a href="/profile/${comment.user_slug}/"><h4 class="fw-700 text-grey-900 font-xssss mt-1">${comment.username}</h4></a>
-                           <span class="font-xssss fw-500 text-grey-500">Just now</span>
-                       </div>
-                       <p class="fw-500 text-grey-800 font-xssss lh-20 mt-1 mb-0">${comment.comment}</p>
-                       <div class="comment-actions mt-2">
-                           <button class="btn btn-sm btn-secondary reply-btn" data-comment-id="${comment.id}">Reply</button>
-                       </div>
-                       <div class="reply-form mt-3" id="reply-form-${comment.id}" style="display: none;">
-                           <form id="reply-form-ajax-${comment.id}" class="ajax-comment-form">
-                               <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('input[name="csrfmiddlewaretoken"]').value}">
-                               <input name="comment" class="form-control mb-2" placeholder="Write your reply...">
-                               <button type="button" class="btn btn-sm btn-primary" onclick="submitComment('reply-form-ajax-${comment.id}', '${comment.post_id}', '${comment.id}')">Post</button>
-                               <button type="button" class="btn btn-sm btn-secondary cancel-reply">Cancel</button>
-                               <div class="comment-success"></div>
-                               <div class="comment-error"></div>
-                           </form>
-                       </div>
-                       <div id="replies-${comment.id}" class="replies-section mt-3" style="display: none;"></div>
-                   </div>
-               </div>
-           `;
-       }
-       
-       function createReplyHtml(reply) {
-           return `
-               <div class="reply-item d-flex mb-3 ms-5">
-                   <figure class="avatar me-2">
-                       <img src="${reply.user_img}" alt="image" class="shadow-sm rounded-circle w30">
-                   </figure>
-                   <div class="reply-content bg-lightblue rounded-xxl p-2">
-                       <div class="d-flex justify-content-between">
-                           <a href="/profile/${reply.user_slug}/"><h4 class="fw-700 text-grey-900 font-xssss mt-1">${reply.username}</h4></a>
-                           <span class="font-xssss fw-500 text-grey-500">Just now</span>
-                       </div>
-                       <p class="fw-500 text-grey-800 font-xssss lh-20 mt-1 mb-0">${reply.comment}</p>
-                       <small class="text-muted">Replying to <b>${reply.parent_username}</b></small>
-                   </div>
-               </div>
-           `;
-       }
-       
-       // Initialize event listeners after DOM is loaded
-       document.addEventListener('DOMContentLoaded', function() {
-           // Add event listeners for reply buttons
-           document.querySelectorAll('.reply-btn').forEach(button => {
-               button.addEventListener('click', function() {
-                   const commentId = this.getAttribute('data-comment-id');
-                   const replyForm = document.getElementById(`reply-form-${commentId}`);
-                   replyForm.style.display = replyForm.style.display === 'none' ? 'block' : 'none';
-               });
-           });
-           
-           // Add event listeners for cancel buttons
-           document.querySelectorAll('.cancel-reply').forEach(button => {
-               button.addEventListener('click', function() {
-                   this.closest('.reply-form').style.display = 'none';
-               });
-           });
-       });
-   </script>
-   
+    <script>
+        function toggleComments(sectionId) {
+            const commentsSection = document.getElementById(sectionId);
+            if (commentsSection.style.display === 'none') {
+                commentsSection.style.display = 'block';
+            } else {
+                commentsSection.style.display = 'none';
+            }
+        }
+        
+        function toggleReplies(sectionId) {
+            const repliesSection = document.getElementById(sectionId);
+            if (repliesSection.style.display === 'none') {
+                repliesSection.style.display = 'block';
+            } else {
+                repliesSection.style.display = 'none';
+            }
+        }
+        
+        function copyToClipboard(text) {
+            const tempInput = document.createElement('input');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            alert('Link copied to clipboard!');
+        }
+        
+        function createCommentHtml(comment) {
+            return `
+                <div class="comment-item d-flex mb-3">
+                    <figure class="avatar me-3">
+                        <img src="${comment.user_img}" alt="image" class="shadow-sm rounded-circle w35">
+                    </figure>
+                    <div class="comment-content bg-lightblue rounded-xxl p-2 w-100">
+                        <div class="d-flex justify-content-between">
+                            <a href="/profile/${comment.user_slug}/"><h4 class="fw-700 text-grey-900 font-xssss mt-1">${comment.username}</h4></a>
+                            <span class="font-xssss fw-500 text-grey-500">Just now</span>
+                        </div>
+                        <p class="fw-500 text-grey-800 font-xssss lh-20 mt-1 mb-0">${comment.comment}</p>
+                        <div class="comment-actions mt-2">
+                            <button class="btn btn-sm btn-secondary reply-btn" data-comment-id="${comment.id}">Reply</button>
+                        </div>
+                        <div class="reply-form mt-3" id="reply-form-${comment.id}" style="display: none;">
+                            <form id="reply-form-ajax-${comment.id}" class="ajax-comment-form">
+                                <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('input[name="csrfmiddlewaretoken"]').value}">
+                                <input name="comment" class="form-control mb-2" placeholder="Write your reply...">
+                                <button type="button" class="btn btn-sm btn-primary" onclick="submitComment('reply-form-ajax-${comment.id}', '${comment.post_id}', '${comment.id}')">Post</button>
+                                <button type="button" class="btn btn-sm btn-secondary cancel-reply">Cancel</button>
+                                <div class="comment-success"></div>
+                                <div class="comment-error"></div>
+                            </form>
+                        </div>
+                        <div id="replies-${comment.id}" class="replies-section mt-3" style="display: none;"></div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function createReplyHtml(reply) {
+            return `
+                <div class="reply-item d-flex mb-3 ms-5">
+                    <figure class="avatar me-2">
+                        <img src="${reply.user_img}" alt="image" class="shadow-sm rounded-circle w30">
+                    </figure>
+                    <div class="reply-content bg-lightblue rounded-xxl p-2">
+                        <div class="d-flex justify-content-between">
+                            <a href="/profile/${reply.user_slug}/"><h4 class="fw-700 text-grey-900 font-xssss mt-1">${reply.username}</h4></a>
+                            <span class="font-xssss fw-500 text-grey-500">Just now</span>
+                        </div>
+                        <p class="fw-500 text-grey-800 font-xssss lh-20 mt-1 mb-0">${reply.comment}</p>
+                        <small class="text-muted">Replying to <b>${reply.parent_username}</b></small>
+                    </div>
+                </div>
+            `;
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.reply-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const commentId = this.getAttribute('data-comment-id');
+                    const replyForm = document.getElementById(`reply-form-${commentId}`);
+                    replyForm.style.display = replyForm.style.display === 'none' ? 'block' : 'none';
+                });
+            });
+            
+            document.querySelectorAll('.cancel-reply').forEach(button => {
+                button.addEventListener('click', function() {
+                    this.closest('.reply-form').style.display = 'none';
+                });
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+
+            const socket = new WebSocket("ws://" + window.location.host + "/ws/notifications/");
+
+            const marks_notify = document.getElementById("marks-notification");
+            const dot = document.getElementById("notification-dot");
+            const countEl = document.getElementById("notification-count");
+            const sidecountEl = document.getElementById("side-notification-count");
+            const listEl = document.getElementById("notifications-list");
+
+            socket.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                console.log(data)
+                switch (data.type) {
+                    case "unread_count":
+                        updateUnreadCount(data.count);
+                        break;
+
+                    case "notifications_list":
+                        renderNotifications(data.notifications);
+                        break;
+
+                    case "new_notification":
+                        prependNotification(data.notification);
+                        increaseCount();
+                        showDot();
+                        break;
+
+                }
+            };
+
+
+            function updateUnreadCount(count) {
+                countEl.textContent = `Notification (${count})`;
+
+                if (count > 0) {
+                    dot.style.display = "block";
+                    sidecountEl.style.display = "block";
+                    marks_notify.style.display = "block";
+                } else {
+                    dot.style.display = "none";
+                    sidecountEl.style.display = "none";
+                    marks_notify.style.display = "none";
+                }
+            }
+
+            function showDot() {
+                sidecountEl.style.display = "block";
+                dot.style.display = "block";
+                marks_notify.style.display = "block";
+            }
+
+            function hideDot() {
+                sidecountEl.style.display = "none";
+                dot.style.display = "none";
+                marks_notify.style.display = "none";
+            }
+
+            function increaseCount() {
+                let current = extractCount();
+                setCount(current + 1);
+            }
+
+            function decreaseCount() {
+                let current = extractCount();
+                setCount(Math.max(0, current - 1));
+            }
+
+            function setCount(value) {
+                countEl.textContent = `Notification (${value})`;
+                sidecountEl.textContent = `${value}`;
+
+                value > 0 ? showDot() : hideDot();
+            }
+
+            function extractCount() {
+                return parseInt(countEl.textContent.replace(/[^\d]/g, ""));
+            }
+
+            function renderNotifications(items) {
+                listEl.innerHTML = "";
+
+                items.slice(0, 5).forEach(n => listEl.insertAdjacentHTML("beforeend", cardHTML(n)));
+            }
+
+            function prependNotification(n) {
+                listEl.insertAdjacentHTML("afterbegin", cardHTML(n));
+            }
+
+            function cardHTML(n) {
+                let text = "";
+
+                if (n.ntype === "New Follower") {
+                    text = `${n.actor.username} followed you`;
+                    
+                } else if (n.ntype === "Follow Accepted") {
+                    text = `${n.actor.username} accepted your follow request`;
+                    
+                } else if (n.ntype === "Follow Request") {
+                    text = `${n.actor.username} sent you a follow request`;
+                    
+                } else if (n.ntype === "Message") {
+                    if (hasContentObject && n.content_object.conversation && n.content_object.conversation.id) {
+                        if (n.content_object.content) {
+                            text = `Message from ${n.actor.username}: <a style='color:black' href="/conversations/${n.content_object.conversation.id}/" target="_blank">"${n.content_object.content}"</a>`;
+                        } else {
+                            text = `${n.actor.username} sent you an image: <a style='color:black' href="/conversations/${n.content_object.conversation.id}/" target="_blank">See</a>`;
+                        }
+                    } else {
+                        text = "The message was deleted";
+                    }
+                    
+                } else {
+                    let actionText = `${n.actor.username} gives you ${n.ntype}`;
+                    
+                    if (n.content_object.caption) {
+                        text = `${actionText} on: <a style='color:black' href="/detail/${n.object_id}/" target="_blank">"${n.content_object.caption}"</a>`;
+                    } else if (n.content_object.body) {
+                        text = `${actionText} on: <a style='color:black' href="/detail/${n.object_id}/" target="_blank">"${n.content_object.body}"</a>`;
+                    } else {
+                        text = `${actionText} on: <a style='color:black' href="/detail/${n.object_id}/" target="_blank">Post</a>`;
+                    }
+
+                }
+                
+                return `
+                        <div class="card bg-transparent-card w-100 border-0 ps-5 mb-3">
+                            
+                            <a href="/profile/${n.actor.slug}/"><img  style='border-radius: 50px' src="${n.actor.img}" alt="user" class="w40 position-absolute left-0"></a>
+                            <h5 class="font-xsss text-grey-900 mb-1 mt-0 fw-700 d-block">${n.actor.username} <span class="text-grey-400 font-xsssss fw-600 float-right mt-1 ms-2"> ${n.created_at} ago </span></h5>
+                            <h6 class="text-grey-500 fw-500 font-xssss lh-4">
+                                ${text}
+                                <a href='/notifications/mark_as_read/${n.id}/' style='float:right' class='btn'>
+                                    <i class="feather-trash text-danger font-sm"></i>
+                                </a>
+                            </h6>
+                            
+                        </div>
+                `;
+            }
+
+        });
+    </script>
+    
    {% block script %}
    {% endblock script %}
 </body>

@@ -12,7 +12,11 @@
                             </a>
                         </li>
                         <li><a href="{% url 'events' %}" class="nav-content-bttn open-font"><i class="font-xl text-current feather-map-pin me-3"></i><span>Event</span></a></li>
-                        <li><a href="{% url 'notifications' %}" class="nav-content-bttn open-font"><i class="font-xl text-current feather-bell me-3"></i><span>Notifications</span>{% if alerts.exists %} <span class="circle-count bg-warning mt-1">{{ alerts.count }}</span> {% endif %}</a></li>
+                        <li>
+                            <a href="{% url 'notifications' %}" class="nav-content-bttn open-font"><i class="font-xl text-current feather-bell me-3"></i><span>Notifications</span>
+                                <span id="side-notification-count" style="{% if not alerts.exists %}display:none{% endif %}" class="circle-count bg-warning mt-1">{{ alerts.count }}</span>
+                            </a>
+                        </li>
                         <li><a href="{% url 'pending-requests' %}" class="nav-content-bttn open-font"><i class="feather-user font-xl text-current me-3"></i><span>Pending Requests</span>{% if friends.exists %} <span class="circle-count bg-warning mt-1">{{ friends.count }}</span> {% endif %}</a></li>
                     </ul>
                 </div>

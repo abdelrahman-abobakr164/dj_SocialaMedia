@@ -11,7 +11,6 @@ def generate_follow_suggestions(user, max_results=5):
     suggestions = []
 
     UIfollowing = user.following.values_list("following_id", flat=True)
-    print(UIfollowing)
 
     if UIfollowing.exists():
         FriendsOfUsers = (

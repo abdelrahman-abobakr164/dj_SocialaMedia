@@ -17,61 +17,63 @@
     <a href="{% url 'story:story_list' %}" class="p-2 text-center ms-0 menu-icon center-menu-icon"><i class="feather-zap font-lg {% if request.path == '/stories/' %} alert-primary text-current {% else %}bg-greylight text-grey-500{% endif %} btn-round-lg theme-dark-bg"></i></a>
     <a href="{% url 'contact-us' %}" class="p-2 text-center ms-0 menu-icon center-menu-icon"><i class="ti-email font-lg {% if request.path == '/accounts/contact-us/' %} alert-primary text-current {% else %}bg-greylight text-grey-500 {% endif %} btn-round-lg theme-dark-bg"></i></a>
 
-    <a href="" class="p-2 text-center ms-auto menu-icon" id="dropdownMenu3" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-bs-toggle="dropdown">{% if alerts.exists %}<span class="dot-count bg-warning"></span>{% endif %}<i class="feather-bell font-xl text-current"></i></a>
+    <a href="" class="p-2 text-center notifications-alert ms-auto menu-icon" id="dropdownMenu3" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-bs-toggle="dropdown">
+        <span id="notification-dot" class="dot-count bg-warning" style="{% if not alerts.exists %}display:none{% endif %}"></span>
+        <i class="feather-bell font-xl text-current"></i>
+    </a>
     <div class="dropdown-menu dropdown-menu-end p-4 rounded-3 border-0 shadow-lg" aria-labelledby="dropdownMenu3">
         <div class="d-flex">
-            <a href="{% url 'notifications' %}"><h4 class="fw-700 font-xss mb-4">Notification ({{ alerts.count }})</h4></a>
-            {% if alerts.exists %}
-                <a href="{% url 'mark_all_as_read' %}"><h4 class="btn fw-700 font-xss mb-4 ms-4">Mark all as read</h4></a>
-            {% endif %}
+            <a href="{% url 'notifications' %}"><h4 id="notification-count" class="unread_count fw-700 font-xss mb-4">Notification ({{ alerts.count }})</h4></a>
+            <a href="{% url 'mark_all_as_read' %}" id="marks-notification" style='{% if not alerts.exists %}display:none{% endif %}'><h4 class="btn fw-700 font-xss mb-4 ms-4">Mark all as read</h4></a>
         </div>
-        {% for user in alerts|slice:'5' %}
-            <div class="card bg-transparent-card w-100 border-0 ps-5 mb-3">
-                
-                <a href="{% url 'profile' user.actor.slug %}"><img  style='border-radius: 50px' src="{{ user.actor.img.url }}" alt="user" class="w40 position-absolute left-0"></a>
-                <h5 class="font-xsss text-grey-900 mb-1 mt-0 fw-700 d-block">{{ user.actor.username }} <span class="text-grey-400 font-xsssss fw-600 float-right mt-1 ms-2"> {{ user.created_at|timesince }} ago </span></h5>
-                <h6 class="text-grey-500 fw-500 font-xssss lh-4">
+        <div id="notifications-list">
+            {% for user in alerts|slice:'5' %}
+                <div class="card bg-transparent-card w-100 border-0 ps-5 mb-3">
+                    
+                    <a href="{% url 'profile' user.actor.slug %}"><img  style='border-radius: 50px' src="{{ user.actor.img.url }}" alt="user" class="w40 position-absolute left-0"></a>
+                    <h5 class="font-xsss text-grey-900 mb-1 mt-0 fw-700 d-block">{{ user.actor.username }} <span class="text-grey-400 font-xsssss fw-600 float-right mt-1 ms-2"> {{ user.created_at|timesince }} ago </span></h5>
+                    <h6 class="text-grey-500 fw-500 font-xssss lh-4">
 
-                    {% if user.ntype == 'New Follower' %}
-                        {{ user.actor.username }} Followed You
-                    {% elif user.ntype == 'Follow Accepted' %}
-                        {{ user.actor.username }} Accept Your Follow Request
-                    {% elif user.ntype == 'Follow Request' %}
-                        {{ user.actor.username }} Send You a {{ user.ntype }}
-                    {% elif user.ntype == 'Message' %}
-                        {% if user.content_object.conversation %}
-                            {% if user.content_object.content %}
-                                Message From {{user.actor.username}}
-                                <a style='color:black' href="{% url 'conversation' user.content_object.conversation.id %}" target="__blank">"{{user.content_object.content|truncatewords:2}}"</a>
+                        {% if user.ntype == 'New Follower' %}
+                            {{ user.actor.username }} Followed You
+                        {% elif user.ntype == 'Follow Accepted' %}
+                            {{ user.actor.username }} Accept Your Follow Request
+                        {% elif user.ntype == 'Follow Request' %}
+                            {{ user.actor.username }} Send You a {{ user.ntype }}
+                        {% elif user.ntype == 'Message' %}
+                            {% if user.content_object.conversation %}
+                                {% if user.content_object.content %}
+                                    Message From {{user.actor.username}}
+                                    <a style='color:black' href="{% url 'conversation' user.content_object.conversation.id %}" target="__blank">"{{user.content_object.content|truncatewords:2}}"</a>
+                                {% else %}
+                                    {{user.actor.username}} 
+                                    Send You an Image <a style='color:black' href="{% url 'conversation' user.content_object.conversation.id %}" target="__blank">See</a>
+                                {% endif %}
                             {% else %}
-                                {{user.actor.username}} 
-                                Send You an Image <a style='color:black' href="{% url 'conversation' user.content_object.conversation.id %}" target="__blank">See</a>
+                            The Message is Deleted
                             {% endif %}
+                                
                         {% else %}
-                        The Message is Deleted
-                        {% endif %}
+                            {{ user.actor.username }} gives you a
+                            {{ user.ntype }}
+                            {% if noti.content_object.caption %}
+                                <a style='color:black' href="{% url 'post-detail' user.object_id %}" target="__blank">{{noti.content_object.caption|truncatewords:2}}</a>
+                            {% elif noti.content_object.body %}
+                                <a style='color:black' href="{% url 'post-detail' user.object_id %}" target="__blank">{{noti.content_object.body|truncatewords:2}}</a>
+                            {% else %}
+                                On This <a style='color:black' href="{% url 'post-detail' user.object_id %}" target="__blank">Post</a>
+                            {% endif %}
                             
-                    {% else %}
-                        {{ user.actor.username }} give you a
-                        {{ user.ntype }}
-                        {% if noti.content_object.caption %}
-                            <a style='color:black' href="{% url 'post-detail' user.object_id %}" target="__blank">{{noti.content_object.caption|truncatewords:2}}</a>
-                        {% elif noti.content_object.body %}
-                            <a style='color:black' href="{% url 'post-detail' user.object_id %}" target="__blank">{{noti.content_object.body|truncatewords:2}}</a>
-                        {% else %}
-                            On This<a style='color:black' href="{% url 'post-detail' user.object_id %}" target="__blank">Post</a>
                         {% endif %}
                         
-                    {% endif %}
+                        <a href='{% url "delete-notification" user.id %}' style='float:right' class='btn'>
+                            <i class="feather-trash text-danger font-sm"></i>
+                        </a>
+                    </h6>
                     
-                    <a href='{% url "delete-notification" user.id %}' style='float:right' class='btn'>
-                        <i class="feather-trash text-danger font-sm"></i>
-                    </a>
-                </h6>
-                
-            </div>
-
-        {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
     </div>
 
     <a href="#" class="p-2 text-center ms-3 menu-icon chat-active-btn">{% for c in UserChats %} {% if c.unread_count >= 1 %}<span class="dot-count bg-warning"></span>{% endif %} {% endfor %}<i class="feather-message-square font-xl text-current"></i></a>

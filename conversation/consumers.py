@@ -1,5 +1,5 @@
 import json
-from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.generic.websocket import WebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 from .models import Conversation, Message
@@ -10,23 +10,24 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
-class ChatConsumer(AsyncWebsocketConsumer):
+class ChatConsumer(WebsocketConsumer):
 
     async def connect(self):
         self.conversation_id = self.scope["url_route"]["kwargs"]["conversation_id"]
         self.room_group_name = f"chat_{self.conversation_id}"
+        self.user = self.scope["user"]
 
         logger.info(
             f"WebSocket connection attempt for conversation {self.conversation_id}"
         )
 
-        if self.scope["user"].is_anonymous:
+        if self.user.is_anonymous:
             logger.warning(
                 f"Anonymous user attempted to connect to conversation {self.conversation_id}"
             )
             await self.close()
             return
-        self.user = self.scope["user"]
+
         logger.info(
             f"User {self.user.username} attempting to connect to conversation {self.conversation_id}"
         )
@@ -60,9 +61,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             logger.info(f"=== WEBSOCKET MESSAGE RECEIVED ===")
             logger.info(f"Raw data: {text_data}")
-            logger.info(f"User: {self.user.username} (ID: {self.user.id})")
+            logger.info(f"User: {self.user.username}")
             logger.info(f"Conversation: {self.conversation_id}")
-            
+
             text_data_json = json.loads(text_data)
             message_type = text_data_json.get("type", "chat_message")
             logger.info(f"Message type: {message_type}")
@@ -75,7 +76,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     # Save message to database
                     message = await self.save_message(message_content)
                     if message:
-                        logger.info(f"Message saved to database with ID: {message['id']}")
+                        logger.info(
+                            f"Message saved to database with ID: {message['id']}"
+                        )
 
                         # Send message to room group
                         await self.channel_layer.group_send(
@@ -85,12 +88,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                 "message": message_content,
                                 "username": self.user.username,
                                 "user_id": self.user.id,
-                                "user_avatar": self.user.img.url if self.user.img else "",
+                                "user_avatar": (
+                                    self.user.img.url if self.user.img else ""
+                                ),
                                 "timestamp": message["timestamp"],
                                 "message_id": str(message["id"]),
                             },
                         )
-                        logger.info(f"Message broadcasted to room group: {self.room_group_name}")
+                        logger.info(
+                            f"Message broadcasted to room group: {self.room_group_name}"
+                        )
                     else:
                         logger.error(f"Failed to save message to database")
                 else:
@@ -156,7 +163,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def save_message(self, content):
         try:
-            logger.info(f"Attempting to save message to conversation {self.conversation_id}")
+            logger.info(
+                f"Attempting to save message to conversation {self.conversation_id}"
+            )
             conversation = Conversation.objects.get(id=self.conversation_id)
             message = Message.objects.create(
                 conversation=conversation, sender=self.user, content=content

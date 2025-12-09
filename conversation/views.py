@@ -181,29 +181,31 @@ def chat_room(request, pk):
     if request.user not in chat.participants.all():
         return redirect("conversations")
 
-    follow = Follow.objects.filter(
-        Q(following=request.user) | Q(following=chat.other_participants(request.user)),
-        Q(follower=chat.other_participants(request.user)) | Q(follower=request.user),
-        status=Follow.Status.PENDING,
-    ).exists()
+    other_user = chat.other_participants(request.user)
+    print(other_user)
+    mutual_follow_exists = Follow.objects.filter(
+        Q(follower=request.user, following=other_user)
+        | Q(following=request.user, follower=other_user),
+        status=Follow.Status.ACCEPTED,
+    )
 
-    convstatus = UserStatus.objects.filter(conversation=chat, status="Block").exists()
+    is_blocked = UserStatus.objects.filter(conversation=chat, status="Block").exists()
 
-    if convstatus:
+    if is_blocked:
         CheckUserStatus = True
-        msgs = messages.warning(request, "This User In Block List")
+        messages.warning(request, "This User In Block List")
 
-    elif not follow:
+    elif not mutual_follow_exists.exists():
         CheckUserStatus = True
-        msgs = messages.warning(
-            request, "This User Is No Longer Your Friend You Can't Chat With Him"
+        messages.warning(
+            request, "This User Is No Longer Your Friend You Can't Chat With Him/her"
         )
 
     else:
         CheckUserStatus = False
 
     msgs = (
-        Message.objects.select_related("conversation")
+        Message.objects.select_related("conversation", "sender")
         .filter(conversation=chat)
         .order_by("timestamp")
     )
@@ -214,7 +216,7 @@ def chat_room(request, pk):
     ).update(read=True)
 
     if request.method == "POST":
-        if not convstatus and follow:
+        if not is_blocked and mutual_follow_exists:
             files = request.FILES.getlist("attachment")
             content = request.POST.get("content")
 
