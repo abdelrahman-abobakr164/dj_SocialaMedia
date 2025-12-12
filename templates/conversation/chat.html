@@ -67,7 +67,7 @@ Chat / {{ chat.id }}
 
                         </div>
                         <div class="chat-wrapper pt-0 w-100 position-relative scroll-bar bg-white theme-dark-bg"style='height: 500px; overflow-y: auto;'>
-                            <div class="chat-body p-3 ">
+                            <div id="chat-body" class="chat-body p-3 ">
                             {% for msg in msgs %}
                                 <div class="messages-content pb-5 mb-3">
                                     {% if msg.sender != request.user %}
@@ -87,7 +87,7 @@ Chat / {{ chat.id }}
                                                             <i class="feather-check font-xs" style='border-radius:50px; background-color: #FDD017'></i>
                                                         {% endif %}
                                                     </h5>
-                                                    <div class="time">{{ msg.timestamp|time:"h:i" }}</div>
+                                                    <div class="time">{{ msg.timestamp|time:"g:i:a" }}</div>
                                                 </div>
                                             </div>
 
@@ -162,7 +162,7 @@ Chat / {{ chat.id }}
                                             {% endif %}  
 
                                             <div class="message-user">
-                                                <div class="time">{{ msg.timestamp|time:"h:i" }}<i class="ti-double-check {% if msg.read == True %}text-info{% else %}{% endif %}"></i></div>
+                                                <div class="time">{{ msg.timestamp|time:"g:i:a" }}<i class="ti-double-check {% if msg.read == True %}text-info{% else %}{% endif %}"></i></div>
                                                 <button type="button" class="btn ms-2 btn-xss">
                                                     <a href="{% url 'delete-chat' msg.id %}"><i class="feather-trash text-danger font-xss"></i></a>
                                                 </button>
@@ -184,7 +184,7 @@ Chat / {{ chat.id }}
                                 <input type="hidden" name="convid" value='{{chat.conversation.id}}'>
                                 <div class='d-flex'>
                                     <input name="attachment" {% if CheckUserStatus %}disabled {% endif %}style='width:150px' multiple='true' type="file">
-                                    <input id="chat-message-input" class='bg-secondary' {% if CheckUserStatus %}disabled{% endif %} name='content' type="text" placeholder="type">
+                                    <input id="chat-message-input" class='bg-secondary' {% if CheckUserStatus %}disabled {% else %} autofocus{% endif %} name='content' type="text" placeholder="type">
                                     <button id="chat-message-submit" type='submit' {% if CheckUserStatus %}disabled{% endif %} class="bg-current"><i class="ti-arrow-right text-white"></i></button>
                                 </div>
                             </form>
@@ -199,45 +199,175 @@ Chat / {{ chat.id }}
 
 {% block scripts %}
     <script>
+        const conversationId = "{{ chat.id }}"; 
+        const currentUserId = "{{ request.user.id }}"; 
+        const currentUsername = "{{ request.user.username }}";
+        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const chatSocket = new WebSocket(
+            protocol + "://" + window.location.host + "/ws/conversations/" + conversationId + "/"
+        );
+        chatSocket.onmessage = function(e) {
+            try {
+                const data = JSON.parse(e.data);
+                console.log(data)
+                if (data.type === 'new_message') {
+                    const message = data.message;
+                    console.log('New message received:', message);
+                    
+                    if (message.sender.username === currentUsername) return;
+                    
+                    const chatBody = document.getElementById('chat-body');
+                    const newMessage = createMessageElement(message);
+                    chatBody.appendChild(newMessage);
+                    
+                    scrollToBottomIfNeeded();
+                }
+            } catch (error) {
+                console.error('Error processing WebSocket message:', error);
+            }
+        };
+
+        chatSocket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
+
+        function createMessageElement(messageData) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'messages-content pb-5 mb-3';
+            
+            const safeContent = messageData.content ? 
+                messageData.content.replace(/[&<>"'/]/g, char => 
+                    ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;'})[char]
+                ) : '';
+            
+            let badgesHTML = '';
+            if (messageData.sender.verified) {
+                badgesHTML += '<i class="feather-check bg-success font-xs" style="border-radius:50px;"></i>';
+            }
+            if (messageData.sender.is_admin) {
+                badgesHTML += '<i class="feather-check font-xs" style="border-radius:50px; background-color: #FDD017"></i>';
+            }
+            
+            let attachmentsHTML = '';
+            if (messageData.attachments && messageData.attachments.length > 0) {
+                messageData.attachments.forEach(att => {
+                    const safeName = att.name ? 
+                        att.name.replace(/[&<>"'/]/g, char => 
+                            ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;'})[char]
+                        ) : 'File';
+                    
+                    if (att.type === 'image' || att.type === 'IMAGE') {
+                        attachmentsHTML += `
+                            <div class="card-body d-block p-0 mb-3">
+                                <div class="row ps-2 pe-2">
+                                    <div class="col p-1">
+                                        <a href="${att.url}" data-lightbox="roadtri">
+                                            <img style="max-height: 200px; max-width: 170px" src="${att.url}" class="rounded-3 w-100" alt="image" onerror="this.src='/static/default-image.png'">
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>`;
+                    } else if (att.type === 'video' || att.type === 'VIDEO') {
+                        attachmentsHTML += `
+                            <div class="card-body p-0 mb-3 rounded-3 overflow-hidden">
+                                <div class="row ps-2 pe-2">
+                                    <div class="col-sm p-1">
+                                        <video controls style="max-height: 400px">
+                                            <source src="${att.url}" type="video/mp4">
+                                        </video>
+                                    </div>
+                                </div>
+                            </div>`;
+                    } else {
+                        attachmentsHTML += `
+                            <div class="card-body d-block p-0 mb-3">
+                                <div class="row ps-2 pe-2">
+                                    <div class="col p-1">
+                                        <a style="color:black" href="${att.url}">
+                                            <i class="ti-file" style="margin-left:15%; font-size: 80px"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>${safeName}</div>`;
+                    }
+                });
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="message-item">
+                    <div class="message-user">
+                        <a href="/profile/${messageData.sender.slug}/">
+                            <figure class="avatar">
+                                <img src="${messageData.sender.img || '/static/default-avatar.png'}" alt="${messageData.sender.username}" onerror="this.src='/static/default-avatar.png'">
+                            </figure>
+                        </a>
+                        <div>
+                            <h5>${messageData.sender.username} ${badgesHTML}</h5>
+                            <div class="time">${messageData.timestamp}</div>
+                        </div>
+                    </div>
+                    ${attachmentsHTML}
+                    ${safeContent ? `<div class="message-wrap me-2">${safeContent}</div>` : ''}
+                </div>
+                <div class="clearfix"></div>`;
+            
+            return messageDiv;
+        }
+
+        function scrollToBottomIfNeeded() {
+            const scrollContainer = document.querySelector('.chat-wrapper');
+            const scrollButton = document.getElementById('scrollToBottomBtn');
+            
+            if (!scrollContainer) return;
+            
+            const isNearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight <= 100;
+            
+            if (isNearBottom) {
+                scrollContainer.scrollTo({
+                    top: scrollContainer.scrollHeight,
+                    behavior: 'smooth'
+                });
+                if (scrollButton) scrollButton.style.display = 'none';
+            } else {
+                if (scrollButton) scrollButton.style.display = 'flex';
+            }
+        }
+
+    </script>
+
+    <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const scrollContainer = document.querySelector('.chat-wrapper') || 
-                                document.querySelector('.chat-body');
+            const scrollContainer = document.querySelector('.chat-wrapper');
             const scrollButton = document.getElementById('scrollToBottomBtn');
             
             if (!scrollContainer || !scrollButton) return;
             
-            // Initial scroll to bottom
-            scrollToBottom();
+            setTimeout(() => {
+                scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                scrollButton.style.display = 'none';
+            }, 100);
             
-            // Show/hide button based on scroll position
             scrollContainer.addEventListener('scroll', function() {
-                // Show button if not scrolled to bottom (with 50px threshold)
                 const showButton = scrollContainer.scrollTop + scrollContainer.clientHeight < 
                                 scrollContainer.scrollHeight - 50;
                 
                 scrollButton.style.display = showButton ? 'flex' : 'none';
             });
             
-            // Button click handler
-            scrollButton.addEventListener('click', scrollToBottom);
-            
-            // Scroll to bottom function
-            function scrollToBottom() {
+            scrollButton.addEventListener('click', function() {
                 scrollContainer.scrollTo({
                     top: scrollContainer.scrollHeight,
                     behavior: 'smooth'
                 });
-            }
+            });
             
-            // Optional: Also handle window resize
             window.addEventListener('resize', function() {
                 if (scrollContainer.scrollTop + scrollContainer.clientHeight >= 
                     scrollContainer.scrollHeight - 50) {
-                    scrollToBottom();
+                    scrollButton.style.display = 'none';
                 }
             });
         });
-
     </script>
-
 {% endblock scripts %}

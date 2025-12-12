@@ -2,6 +2,8 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.contrib.auth import get_user_model
 from channels.db import database_sync_to_async
 from notifications.models import Notification
+from django.utils.timesince import timesince
+from django.utils.timezone import now
 
 User = get_user_model()
 
@@ -88,6 +90,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                     "ntype": n.ntype,
                     "content_object": content_object_data,
                     "created_at": n.created_at.isoformat(),
+                    "created_at": f"{timesince(n.created_at, now())} ago",
                     "object_id": str(n.object_id),
                 }
             )

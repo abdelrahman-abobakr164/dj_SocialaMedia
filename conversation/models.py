@@ -41,16 +41,21 @@ class Message(models.Model):
         Conversation, related_name="messages", on_delete=models.CASCADE
     )
     sender = models.ForeignKey(
-        User, related_name="sent_messages", on_delete=models.CASCADE
+        User, related_name="message_sender", on_delete=models.CASCADE
     )
     content = models.TextField(
         validators=[MaxLengthValidator(2000)], null=True, blank=True
     )
     read = models.BooleanField(default=False)
+    read_by = models.ManyToManyField(User, related_name="read_messages", blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-timestamp"]
+
+    def mark_as_read_by_user(self, user):
+        if user not in self.read_by.all():
+            self.read_by.add(user)
 
 
 class MessageAttachment(models.Model):

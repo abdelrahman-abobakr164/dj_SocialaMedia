@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q, Prefetch, Count, Max
+from django.db.models import Q, Prefetch, Count, Max, Case, When
 from django.contrib import messages
 from datetime import datetime
 
@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from conversation.forms import CreateForm
 from accounts.models import Follow
 from conversation.models import *
+from conversation.utils import message_handler
 from core.utils import *
 
 
@@ -121,14 +122,28 @@ def conversations(request):
         Conversation.objects.prefetch_related(
             Prefetch("messages", queryset=messages_filter, to_attr="messages_filter")
         )
-        .filter(
-            participants=request.user,
-        )
+        .filter(participants=request.user)
         .annotate(
             latest_message=Max("messages__timestamp"),
-            unread_count=Count(
-                "messages",
-                filter=Q(messages__read=False) & ~Q(messages__sender=request.user),
+            unread_count=Case(
+                When(
+                    is_group=False,
+                    then=Count(
+                        "messages",
+                        filter=Q(messages__read=False)
+                        & ~Q(messages__sender=request.user),
+                        distinct=True,
+                    ),
+                ),
+                When(
+                    is_group=True,
+                    then=Count(
+                        "messages",
+                        filter=~Q(messages__sender=request.user)
+                        & ~Q(messages__read_by=request.user),
+                        distinct=True,
+                    ),
+                ),
             ),
         )
         .exclude(
@@ -178,11 +193,27 @@ def conversations(request):
 def chat_room(request, pk):
     url = request.META.get("HTTP_REFERER")
     chat = get_object_or_404(Conversation, pk=pk)
+
     if request.user not in chat.participants.all():
         return redirect("conversations")
 
     other_user = chat.other_participants(request.user)
-    print(other_user)
+
+    if chat.is_group:
+        unread_group_messages = Message.objects.filter(conversation=chat).exclude(
+            sender=request.user
+        )
+
+        for message in unread_group_messages:
+            message.mark_as_read_by_user(request.user)
+
+    else:
+        Message.objects.filter(
+            conversation=chat,
+            read=False,
+            sender=other_user,
+        ).update(read=True)
+
     mutual_follow_exists = Follow.objects.filter(
         Q(follower=request.user, following=other_user)
         | Q(following=request.user, follower=other_user),
@@ -209,44 +240,56 @@ def chat_room(request, pk):
         .filter(conversation=chat)
         .order_by("timestamp")
     )
-    Message.objects.filter(
-        ~Q(sender=request.user),
-        conversation=chat,
-        read=False,
-    ).update(read=True)
 
     if request.method == "POST":
         if not is_blocked and mutual_follow_exists:
             files = request.FILES.getlist("attachment")
-            content = request.POST.get("content")
+            content = request.POST.get("content", "").strip()
 
-            if files or content:
-                message = Message.objects.create(
-                    conversation=chat,
-                    content=content,
-                    sender=request.user,
-                )
-                for file in files:
-                    if file_validation(file):
-                        if validate_file_size(file):
-                            MessageAttachment.objects.create(
-                                file=file,
-                                message=message,
-                                file_name=file.name,
-                                file_type=file.content_type.split("/")[0],
-                            )
+            try:
+                if content and not files:
+                    message = Message.objects.create(
+                        conversation=chat,
+                        content=content,
+                        sender=request.user,
+                    )
+                elif files or content:
+                    for file in files:
+                        if file_validation(file):
+                            if validate_file_size(file):
+                                message = Message.objects.create(
+                                    conversation=chat,
+                                    content=content if content else "",
+                                    sender=request.user,
+                                )
+                                MessageAttachment.objects.create(
+                                    file=file,
+                                    message=message,
+                                    file_name=file.name,
+                                    file_type=file.content_type.split("/")[0],
+                                )
+                            else:
+                                messages.warning(request, f"File size exceeds 10MB.")
+                                return redirect(url)
                         else:
-                            messages.warning(request, f"File size exceeds 10MB.")
-                            message.delete()
+                            messages.warning(
+                                request, f"File Extension is not Supported"
+                            )
                             return redirect(url)
-                    else:
-                        messages.warning(request, f"File Extension is not Supported")
-                        message.delete()
-                        return redirect(url)
+                else:
+                    messages.error(request, "Don't Mess")
+                    return redirect(url)
 
-            chat.updated_at = datetime.now()
-            chat.save()
-        return redirect(url)
+                message_handler(message)
+                chat.updated_at = datetime.now()
+                chat.save()
+
+            except Exception as e:
+                messages.error(request, f"{str(e)}")
+                return redirect(url)
+        else:
+            messages.warning(request, "you're not friends any more")
+            return redirect(url)
 
     context = {"chat": chat, "msgs": msgs, "CheckUserStatus": CheckUserStatus}
     return render(request, "conversation/chat.html", context)

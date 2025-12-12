@@ -51,7 +51,7 @@ Chats
                                                             <i class="feather-check bg-success font-xsss" style='border-radius:50px; margin-top:10%'></i>
                                                         {% endif %}
                                                         {% if msg.participants.last.is_admin %}
-                                                           <i class="feather-check font-xss" style='background-color: #FDD017;border-radius:50px; margin-top:10%'></i>
+                                                        <i class="feather-check font-xss" style='background-color: #FDD017;border-radius:50px; margin-top:10%'></i>
                                                         {% endif %}
                                                     </h6>
                                                 {% else %}
@@ -72,7 +72,7 @@ Chats
                                                     {% if msg.messages.first.sender != request.user %}
                                                         ({{msg.messages.first.sender.username}}),
                                                     {% else %}
-                                                       (You),
+                                                    (You),
                                                     {% endif %}
                                                     {% if msg.messages.all %}
                                                         {% if msg.messages.first.content %}

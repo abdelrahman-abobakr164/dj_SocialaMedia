@@ -93,41 +93,42 @@
         {% block body %}
         {% endblock body %}
 
-
          <div class="right-chat nav-wrap mt-2 right-scroll-bar">
             <div class="middle-sidebar-right-content bg-white shadow-xss rounded-xxl">
                 <div class="section full pe-3 ps-4 pt-4 position-relative feed-body">
                     <h4 class="font-xsssss text-grey-500 text-uppercase fw-700 ls-3">CHATS</h4>
                     <ul class="list-group list-group-flush">
-                        {% for conv in UserChats %}
-                            <li class="bg-transparent list-group-item no-icon pe-0 ps-0 pt-2 pb-2 border-0 d-flex align-items-center">
-                                <figure class="avatar float-left mb-0 me-2">
-                                    {% if conv.is_group %}
-                                        {% if conv.group_image %}
-                                            <img style='border-radius: 50%' src="{{ conv.group_image.url }}" alt="image" class="w35">
+                        {% for conversations in UserChats %}
+                            {% for conv in conversations %}
+                                <li class="bg-transparent list-group-item no-icon pe-0 ps-0 pt-2 pb-2 border-0 d-flex align-items-center">
+                                    <figure class="avatar float-left mb-0 me-2">
+                                        {% if conv.is_group %}
+                                            {% if conv.group_image %}
+                                                <img style='border-radius: 50%' src="{{ conv.group_image.url }}" alt="image" class="w35">
+                                            {% else %}
+                                                <i class="feather-users text-dark font-xl ms-1  rounded-circle"></i>
+                                            {% endif %}
+                                            
+                                        {% elif conv.participants.last == request.user %}
+                                            <img style='border-radius: 50%' src="{{ conv.participants.first.img.url }}" alt="image" class="w35">
                                         {% else %}
-                                            <i class="feather-users text-dark font-xl ms-1  rounded-circle"></i>
+                                            <img style='border-radius: 50%' src="{{ conv.participants.last.img.url }}" alt="image" class="w35">
                                         {% endif %}
-                                        
-                                    {% elif conv.participants.last == request.user %}
-                                        <img style='border-radius: 50%' src="{{ conv.participants.first.img.url }}" alt="image" class="w35">
-                                    {% else %}
-                                        <img style='border-radius: 50%' src="{{ conv.participants.last.img.url }}" alt="image" class="w35">
+                                    </figure>
+                                    <h3 class="fw-700 mb-0 mt-0">
+                                        {% if conv.is_group %}
+                                            <a class="font-xssss text-grey-600 d-block text-dark" href="{% url 'conversation' conv.pk %}">{{ conv.group_name }} </a>
+                                        {% elif conv.participants.last == request.user %}
+                                            <a class="font-xssss text-grey-600 d-block text-dark" href="{% url 'conversation' conv.pk %}">{{ conv.participants.first.username }} </a>
+                                        {% else %}
+                                            <a class="font-xssss text-grey-600 d-block text-dark" href="{% url 'conversation' conv.pk %}">{{ conv.participants.last.username }}</a>
+                                        {% endif %}
+                                    </h3>
+                                    {% if conv.unread_count >= 1 %}
+                                        <span class="badge badge-primary text-white badge-pill fw-500 mt-0"> {{ conv.unread_count }} </span>
                                     {% endif %}
-                                </figure>
-                                <h3 class="fw-700 mb-0 mt-0">
-                                    {% if conv.is_group %}
-                                        <a class="font-xssss text-grey-600 d-block text-dark" href="{% url 'conversation' conv.pk %}">{{ conv.group_name }} </a>
-                                    {% elif conv.participants.last == request.user %}
-                                        <a class="font-xssss text-grey-600 d-block text-dark" href="{% url 'conversation' conv.pk %}">{{ conv.participants.first.username }} </a>
-                                    {% else %}
-                                        <a class="font-xssss text-grey-600 d-block text-dark" href="{% url 'conversation' conv.pk %}">{{ conv.participants.last.username }}</a>
-                                    {% endif %}
-                                </h3>
-                                {% if conv.unread_count >= 1 %}
-                                    <span class="badge badge-primary text-white badge-pill fw-500 mt-0"> {{ conv.unread_count }} </span>
-                                {% endif %}
-                            </li>
+                                </li>
+                            {% endfor %}
                         {% endfor %}
                     </ul>
                 </div>
@@ -257,7 +258,7 @@
     <script>
         document.addEventListener("DOMContentLoaded", () => {
 
-            const socket = new WebSocket("ws://" + window.location.host + "/ws/notifications/");
+            const socket = new WebSocket(`ws://${window.location.host}/ws/notifications/`);
 
             const marks_notify = document.getElementById("marks-notification");
             const dot = document.getElementById("notification-dot");
@@ -267,7 +268,6 @@
 
             socket.onmessage = (e) => {
                 const data = JSON.parse(e.data);
-                console.log(data)
                 switch (data.type) {
                     case "unread_count":
                         updateUnreadCount(data.count);
@@ -357,16 +357,12 @@
                     text = `${n.actor.username} sent you a follow request`;
                     
                 } else if (n.ntype === "Message") {
-                    if (hasContentObject && n.content_object.conversation && n.content_object.conversation.id) {
-                        if (n.content_object.content) {
-                            text = `Message from ${n.actor.username}: <a style='color:black' href="/conversations/${n.content_object.conversation.id}/" target="_blank">"${n.content_object.content}"</a>`;
-                        } else {
-                            text = `${n.actor.username} sent you an image: <a style='color:black' href="/conversations/${n.content_object.conversation.id}/" target="_blank">See</a>`;
-                        }
+                    if (n.content_object.content) {
+                        text = `Message from ${n.actor.username}: <a style='color:black' href="/conversations/${n.content_object.conversation.id}/" target="_blank">"${n.content_object.content}"</a>`;
                     } else {
-                        text = "The message was deleted";
+                        text = `${n.actor.username} sent you an image: <a style='color:black' href="/conversations/${n.content_object.conversation.id}/" target="_blank">See</a>`;
                     }
-                    
+
                 } else {
                     let actionText = `${n.actor.username} gives you ${n.ntype}`;
                     
@@ -387,7 +383,7 @@
                             <h5 class="font-xsss text-grey-900 mb-1 mt-0 fw-700 d-block">${n.actor.username} <span class="text-grey-400 font-xsssss fw-600 float-right mt-1 ms-2"> ${n.created_at} ago </span></h5>
                             <h6 class="text-grey-500 fw-500 font-xssss lh-4">
                                 ${text}
-                                <a href='/notifications/mark_as_read/${n.id}/' style='float:right' class='btn'>
+                                <a href='/notifications/mark_as_read/${n.id}' style='float:right' class='btn'>
                                     <i class="feather-trash text-danger font-sm"></i>
                                 </a>
                             </h6>

@@ -285,7 +285,6 @@ def create_comment(request):
             )
 
             if parent:
-                print(parent)
                 parent_comment = Comment.objects.get(id=parent)
                 comment.parent = parent_comment
                 comment.save()

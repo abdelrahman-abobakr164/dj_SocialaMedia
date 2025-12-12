@@ -68,7 +68,7 @@ def create_like_notification(sender, instance, created, **kwargs):
                 object_id=str(content_object.id),
                 ntype="Like",
             )
-        send_notification_to_user(notification)
+            send_notification_to_user(notification)
 
 
 @receiver(post_save, sender=Message)

@@ -18,6 +18,7 @@ media storage = cloudinary for small projects
     migrations 
     add the variables in .env
     and go to (render, etc..) adding in webserver environment variables
+serving media via nginx
 
 .gitignore
 GitHub

@@ -34,7 +34,8 @@ celerybeat-schedule-wal
 
 Thumbs.db
 .DS_Store
-
+Dockerfile
+docker-compose.yml
 todo.txt
 
 *.pid

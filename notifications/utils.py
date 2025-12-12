@@ -5,8 +5,8 @@ from asgiref.sync import async_to_sync
 from django.utils.timesince import timesince
 from channels.layers import get_channel_layer
 from django.contrib.auth import get_user_model
-import logging
 from notifications.models import Notification
+import logging
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
