@@ -24,37 +24,60 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
         unread_count = await self.get_unread_count()
         await self.send_json({"type": "unread_count", "count": unread_count})
 
+        notifications = await self.get_notifications()
+        await self.send_json(
+            {"type": "notifications_list", "notifications": notifications}
+        )
+
     async def disconnect(self, close_code):
-        try:
-            if hasattr(self, "user") and not self.user.is_anonymous:
+        if hasattr(self, "user") and not self.user.is_anonymous:
+            try:
                 await self.channel_layer.group_discard(
                     self.group_name, self.channel_name
                 )
-        except Exception:
-            pass
+            except Exception:
+                pass
 
     async def receive_json(self, content):
         message_type = content.get("type")
 
-        if message_type == "get_notifications":
-            notifications = await self.get_notifications()
-            await self.send_json(
-                {"type": "notifications_list", "notifications": notifications}
-            )
-
-        elif message_type == "get_unread_count":
+        if message_type == "get_unread_count":
             unread_count = await self.get_unread_count()
             await self.send_json({"type": "unread_count", "count": unread_count})
 
     async def notification_message(self, event):
         await self.send_json(
-            {"type": "new_notification", "notification": event["notification"]}
+            {
+                "type": "new_notification",
+                "notification": event["notification"],
+                "unread_count": event.get("unread_count"),
+            }
         )
+    
+    @staticmethod
+    def serialize_content_object(content_obj):
+        if not content_obj:
+            return {"conversation": {"id": ""}}
+
+        content_object_data = {
+            "content": getattr(content_obj, "content", ""),
+            "caption": getattr(content_obj, "caption", ""),
+            "body": getattr(content_obj, "body", ""),
+        }
+
+        if hasattr(content_obj, "conversation") and content_obj.conversation:
+            content_object_data["conversation"] = {
+                "id": str(content_obj.conversation.id)
+            }
+        else:
+            content_object_data["conversation"] = {"id": ""}
+
+        return content_object_data
 
     @database_sync_to_async
     def get_notifications(self):
         notifications = (
-            Notification.objects.filter(recipient=self.user)
+            Notification.objects.filter(recipient=self.user, read=False)
             .select_related("actor", "content_type")
             .prefetch_related("content_object")
             .order_by("-created_at")
@@ -62,22 +85,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 
         notification_list = []
         for n in notifications:
-            content_object_data = {}
-            if n.content_object:
-                content_obj = n.content_object
-
-                content_object_data = {
-                    "content": getattr(content_obj, "content", ""),
-                    "caption": getattr(content_obj, "caption", ""),
-                    "body": getattr(content_obj, "body", ""),
-                }
-
-                if hasattr(content_obj, "conversation") and content_obj.conversation:
-                    content_object_data["conversation"] = {
-                        "id": str(content_obj.conversation.id)
-                    }
-                else:
-                    content_object_data["conversation"] = {"id": ""}
+            content_object_data = self.serialize_content_object(n.content_object)
 
             notification_list.append(
                 {
@@ -89,7 +97,6 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                     },
                     "ntype": n.ntype,
                     "content_object": content_object_data,
-                    "created_at": n.created_at.isoformat(),
                     "created_at": f"{timesince(n.created_at, now())} ago",
                     "object_id": str(n.object_id),
                 }

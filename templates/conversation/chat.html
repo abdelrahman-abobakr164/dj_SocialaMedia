@@ -235,54 +235,6 @@ Chat / {{ chat.id }}
             console.error('WebSocket error:', error);
         };
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const chatForm = document.getElementById('chat-form');
-            if (chatForm) {
-                chatForm.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    const submitButton = document.getElementById('chat-message-submit');
-                    if (submitButton && submitButton.disabled) {
-                        return;
-                    }
-
-                    try {
-                        const formData = new FormData(this);
-                        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-                        const response = await fetch(this.action || window.location.href, {
-                            method: 'POST',
-                            body: formData,
-                            headers: {
-                                'X-CSRFToken': csrfToken,
-                            },
-                        });
-                    
-                        if (response.ok) {
-                            const messageInput = document.getElementById('chat-message-input');
-                            createMessageElement(messageInput.value)
-                            if (messageInput) {
-                                messageInput.value = '';
-                            }
-                            
-                            const fileInputs = chatForm.querySelectorAll('input[type="file"]');
-                            fileInputs.forEach(input => {
-                                input.value = '';
-                            });
-
-
-                        } else {
-                            const errorData = await response.json();
-                            console.error('Error:', errorData);
-                            alert('Error sending message: ' + (errorData.error || 'Unknown error'));
-                        }
-
-                    } catch (error) {
-                        console.error('Network error:', error);
-                        alert('Network error. Please try again.');
-                    }
-                });
-            }
-        });
-
         function createMessageElement(messageData) {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'messages-content pb-5 mb-3';

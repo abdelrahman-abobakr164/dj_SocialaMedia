@@ -21,23 +21,7 @@ def send_notification_to_user(notification):
             return
 
         group_name = f"notifications_{notification.recipient.id}"
-
-        content_object_data = {}
-        if notification.content_object:
-            content_obj = notification.content_object
-
-            content_object_data = {
-                "content": getattr(content_obj, "content", ""),
-                "caption": getattr(content_obj, "caption", ""),
-                "body": getattr(content_obj, "body", ""),
-            }
-
-            if hasattr(content_obj, "conversation") and content_obj.conversation:
-                content_object_data["conversation"] = {
-                    "id": str(content_obj.conversation.id)
-                }
-            else:
-                content_object_data["conversation"] = {"id": ""}
+        from .consumers import NotificationConsumer
 
         notification_data = {
             "id": str(notification.id),
@@ -47,7 +31,9 @@ def send_notification_to_user(notification):
                 "img": notification.actor.img.url,
             },
             "ntype": notification.ntype,
-           "content_object": content_object_data,
+            "content_object": NotificationConsumer.serialize_content_object(
+                notification.content_object
+            ),
             "created_at": f"{timesince(notification.created_at, now())} ago",
             "object_id": str(notification.object_id),
         }
