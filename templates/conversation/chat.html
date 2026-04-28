@@ -163,9 +163,9 @@ Chat / {{ chat.id }}
 
                                             <div class="message-user">
                                                 <div class="time">{{ msg.timestamp|time:"g:i:a" }}<i class="ti-double-check {% if msg.read == True %}text-info{% else %}{% endif %}"></i></div>
-                                                <button type="button" class="btn ms-2 btn-xss">
-                                                    <a href="{% url 'delete-chat' msg.id %}"><i class="feather-trash text-danger font-xss"></i></a>
-                                                </button>
+                                                <a href='{% url "delete-chat" msg.pk %}'  class="btn ms-2 btn-xss">
+                                                    <i class="feather-trash text-danger font-xss"></i>
+                                                </a> 
                                             </div>
                                         </div>
                                     {% endif %}
@@ -196,6 +196,12 @@ Chat / {{ chat.id }}
     </div>
 
 {% endblock body %}
+
+{% block modal %}
+
+
+
+{% endblock modal %}
 
 {% block scripts %}
     <script>
@@ -317,25 +323,6 @@ Chat / {{ chat.id }}
                 <div class="clearfix"></div>`;
             
             return messageDiv;
-        }
-
-        function scrollToBottomIfNeeded() {
-            const scrollContainer = document.querySelector('.chat-wrapper');
-            const scrollButton = document.getElementById('scrollToBottomBtn');
-            
-            if (!scrollContainer) return;
-            
-            const isNearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight <= 100;
-            
-            if (isNearBottom) {
-                scrollContainer.scrollTo({
-                    top: scrollContainer.scrollHeight,
-                    behavior: 'smooth'
-                });
-                if (scrollButton) scrollButton.style.display = 'none';
-            } else {
-                if (scrollButton) scrollButton.style.display = 'flex';
-            }
         }
 
     </script>

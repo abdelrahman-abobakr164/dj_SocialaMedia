@@ -8,6 +8,7 @@ from django.db.models import Q, Prefetch
 from django.core.mail import send_mail
 from django.contrib import messages
 from django.conf import settings
+
 from notifications.models import Notification
 from accounts.models import Follow
 from conversation.models import *

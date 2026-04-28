@@ -1,4 +1,4 @@
-EXTENSIONS = ["mp4", "mp3", "JPG", "jpg", "png", "PNG"]
+EXTENSIONS = ["mp4", "mp3", "JPG", "jpg", "jpeg", "png", "PNG"]
 FILE_SIZE = 1024 * 1024 * 10
 
 

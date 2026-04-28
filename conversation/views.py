@@ -1,10 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Prefetch, Count, Max, Case, When
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from django.contrib.auth import get_user_model
 from django.contrib import messages
+from django.db import transaction
 from datetime import datetime
 
-from django.contrib.auth import get_user_model
 from conversation.forms import CreateForm
 from accounts.models import Follow
 from conversation.models import *
@@ -14,10 +16,22 @@ from core.utils import *
 
 @login_required
 def group(request, pk=None):
-    url = request.META.get("HTTP_REFERER")
     User = get_user_model()
+    user_ids = set()
+
     if pk:
-        conversation = Conversation.objects.get(pk=pk)
+        conversation = get_object_or_404(
+            Conversation.objects.prefetch_related("participants"), pk=pk
+        )
+
+        if request.user not in conversation.admin.all():
+            messages.warning(request, "You'r not admin to do this")
+            return redirect("conversations")
+
+        for user in conversation.participants.all():
+            if user.id != request.user.id:
+                user_ids.add(user.id)
+
         form = CreateForm(instance=conversation)
     else:
         conversation = None
@@ -28,38 +42,33 @@ def group(request, pk=None):
         | Q(following=request.user.id, status=Follow.Status.ACCEPTED)
     )
 
-    user_ids = set()
     for f in following:
         if f.follower_id != request.user.id:
             user_ids.add(f.follower_id)
         if f.following_id != request.user.id:
             user_ids.add(f.following_id)
 
-    if pk:
-        for user in conversation.participants.all():
-            if user.id != request.user.id:
-                user_ids.add(user.id)
     users = User.objects.filter(id__in=user_ids)
 
-    if request.user in conversation.admin.all() if pk else True:
+    if request.method == "POST":
+        create_form = CreateForm(request.POST, instance=conversation)
+        participants = request.POST.getlist("participants")
+        admins = request.POST.getlist("admins", [request.user])
 
-        if request.method == "POST":
-            create_form = CreateForm(request.POST, instance=conversation)
-            participants = request.POST.getlist("participants")
-            admins = request.POST.getlist("admins", [request.user])
-            if create_form.is_valid():
+        if create_form.is_valid():
+
+            if not participants or participants == request.user.username:
+                messages.warning(request, "Please Select Participants")
+                return redirect("edit_group", conversation.pk)
+            with transaction.atomic():
                 form_save = create_form.save(commit=False)
                 form_save.is_group = True
-
-                if not participants or participants == request.user.username:
-                    messages.warning(request, "Please Select Participants")
-                    return redirect(url)
-
                 form_save.save()
 
                 if pk == None:
-                    conversation = Conversation.objects.get(
-                        group_name=create_form.cleaned_data.get("group_name"),
+                    conversation = get_object_or_404(
+                        Conversation.objects.prefetch_related("participants", "admin"),
+                        group_name=form_save.group_name,
                     )
                 conversation.admin.set(admins) if pk else None
                 conversation.admin.add(request.user)
@@ -67,28 +76,18 @@ def group(request, pk=None):
                 conversation.participants.add(request.user)
                 conversation.save()
 
-                if "/conversations/group/" == request.path:
-                    messages.success(request, "Group Created Successfully!")
-                    return redirect("conversations")
-                else:
+                if pk:
                     messages.success(
                         request, "You'v been update Your Group Successfully!"
                     )
-                return redirect(url)
-            else:
-                messages.error(request, f"Invalid form data ")
-                return redirect(url)
+                else:
+                    messages.success(request, "Group Created Successfully!")
+                return redirect("conversations")
+        else:
+            messages.error(request, f"Invalid form data ")
+            return redirect("conversations", conversation.pk)
 
-    else:
-        messages.warning(request, "You'r not admin to do this")
-        return redirect(url)
-
-    context = {
-        "users": users,
-        "form": form,
-        "conversation": conversation,
-        "pk": pk,
-    }
+    context = {"users": users, "form": form, "conversation": conversation, "pk": pk}
     return render(request, "conversation/group.html", context)
 
 
@@ -191,108 +190,116 @@ def conversations(request):
 
 @login_required
 def chat_room(request, pk):
-    url = request.META.get("HTTP_REFERER")
-    chat = get_object_or_404(Conversation, pk=pk)
+    try:
+        url = request.META.get("HTTP_REFERER")
+        chat = Conversation.objects.select_related("participants", "admin").get(pk=pk)
 
-    if request.user not in chat.participants.all():
-        return redirect("conversations")
+        if request.user not in chat.participants.all():
+            return redirect("conversations")
 
-    other_user = chat.other_participants(request.user)
+        other_user = chat.other_participants(request.user)
 
-    if chat.is_group:
-        unread_group_messages = Message.objects.filter(conversation=chat).exclude(
-            sender=request.user
-        )
+        if chat.is_group:
+            unread_group_messages = Message.objects.filter(conversation=chat).exclude(
+                sender=request.user
+            )
 
-        for message in unread_group_messages:
-            message.mark_as_read_by_user(request.user)
+            for message in unread_group_messages:
+                message.mark_as_read_by_user(request.user)
 
-    else:
-        Message.objects.filter(
-            conversation=chat,
-            read=False,
-            sender=other_user,
-        ).update(read=True)
-
-    mutual_follow_exists = Follow.objects.filter(
-        Q(follower=request.user, following=other_user)
-        | Q(following=request.user, follower=other_user),
-        status=Follow.Status.ACCEPTED,
-    )
-
-    is_blocked = UserStatus.objects.filter(conversation=chat, status="Block").exists()
-
-    if is_blocked:
-        CheckUserStatus = True
-        messages.warning(request, "This User In Block List")
-
-    elif not mutual_follow_exists.exists():
-        CheckUserStatus = True
-        messages.warning(
-            request, "This User Is No Longer Your Friend You Can't Chat With Him/her"
-        )
-
-    else:
-        CheckUserStatus = False
-
-    msgs = (
-        Message.objects.select_related("conversation", "sender")
-        .filter(conversation=chat)
-        .order_by("timestamp")
-    )
-
-    if request.method == "POST":
-        if not is_blocked and mutual_follow_exists:
-            files = request.FILES.getlist("attachment")
-            content = request.POST.get("content", "").strip()
-
-            try:
-                if content and not files:
-                    message = Message.objects.create(
-                        conversation=chat,
-                        content=content,
-                        sender=request.user,
-                    )
-                elif files or content:
-                    for file in files:
-                        if file_validation(file):
-                            if validate_file_size(file):
-                                message = Message.objects.create(
-                                    conversation=chat,
-                                    content=content if content else "",
-                                    sender=request.user,
-                                )
-                                MessageAttachment.objects.create(
-                                    file=file,
-                                    message=message,
-                                    file_name=file.name,
-                                    file_type=file.content_type.split("/")[0],
-                                )
-                            else:
-                                messages.warning(request, f"File size exceeds 10MB.")
-                                return redirect(url)
-                        else:
-                            messages.warning(
-                                request, f"File Extension is not Supported"
-                            )
-                            return redirect(url)
-                else:
-                    messages.error(request, "Don't Mess")
-                    return redirect(url)
-
-                message_handler(message)
-                chat.updated_at = datetime.now()
-                chat.save()
-
-            except Exception as e:
-                messages.error(request, f"{str(e)}")
-                return redirect(url)
         else:
-            messages.warning(request, "you're not friends any more")
-            return redirect(url)
+            Message.objects.filter(
+                conversation=chat,
+                read=False,
+                sender=other_user,
+            ).update(read=True)
 
-    context = {"chat": chat, "msgs": msgs, "CheckUserStatus": CheckUserStatus}
-    return render(request, "conversation/chat.html", context)
+        mutual_follow_exists = Follow.objects.filter(
+            Q(follower=request.user, following=other_user)
+            | Q(following=request.user, follower=other_user),
+            status=Follow.Status.ACCEPTED,
+        )
+
+        is_blocked = UserStatus.objects.filter(
+            conversation=chat, status="Block"
+        ).exists()
+
+        if is_blocked:
+            CheckUserStatus = True
+            messages.warning(request, "This User In Block List")
+
+        elif not mutual_follow_exists.exists():
+            CheckUserStatus = True
+            messages.warning(
+                request,
+                "This User Is No Longer Your Friend You Can't Chat With Him/her",
+            )
+
+        else:
+            CheckUserStatus = False
+
+        msgs = (
+            Message.objects.select_related("conversation", "sender")
+            .filter(conversation=chat)
+            .order_by("timestamp")
+        )
+
+        if request.method == "POST":
+            if not is_blocked and mutual_follow_exists:
+                files = request.FILES.getlist("attachment")
+                content = request.POST.get("content", "").strip()
+
+                try:
+                    if content and not files:
+                        message = Message.objects.create(
+                            conversation=chat,
+                            content=content,
+                            sender=request.user,
+                        )
+                    elif files or content:
+                        for file in files:
+                            if file_validation(file):
+                                if validate_file_size(file):
+                                    message = Message.objects.create(
+                                        conversation=chat,
+                                        content=content if content else "",
+                                        sender=request.user,
+                                    )
+                                    MessageAttachment.objects.create(
+                                        file=file,
+                                        message=message,
+                                        file_name=file.name,
+                                        file_type=file.content_type.split("/")[0],
+                                    )
+                                else:
+                                    messages.warning(
+                                        request, f"File size exceeds 10MB."
+                                    )
+                                    return redirect(url)
+                            else:
+                                messages.warning(
+                                    request, f"File Extension is not Supported"
+                                )
+                                return redirect(url)
+                    else:
+                        messages.error(request, "Don't Mess")
+                        return redirect(url)
+
+                    message_handler(message)
+                    chat.updated_at = datetime.now()
+                    chat.save()
+
+                except Exception as e:
+                    messages.error(request, f"{str(e)}")
+                    return redirect(url)
+            else:
+                messages.warning(request, "you're not friends any more")
+                return redirect(url)
+
+        context = {"chat": chat, "msgs": msgs, "CheckUserStatus": CheckUserStatus}
+        return render(request, "conversation/chat.html", context)
+    except Conversation.DoesNotExist:
+        return redirect("conversations")
 
 
 @login_required
@@ -308,7 +315,8 @@ def block(request):
     )
 
     blocked_conversations = (
-        Conversation.objects.prefetch_related(
+        Conversation.objects.select_related("participants", "admin")
+        .prefetch_related(
             Prefetch(
                 "conversation_status",
                 queryset=user_block_status,

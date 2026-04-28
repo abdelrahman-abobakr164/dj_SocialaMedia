@@ -5,6 +5,7 @@ from .views import PostDetailView
 urlpatterns = [
     path("", views.home, name="index"),
     path("upload/", views.upload, name="upload"),
+    path("update_upload/<uuid:pk>", views.upload, name="update_upload"),
     path("search/", views.search, name="search"),
     path("events/", views.events, name="events"),
     path("create-comment/", views.create_comment, name="create-comment"),

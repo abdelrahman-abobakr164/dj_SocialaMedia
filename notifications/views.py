@@ -2,6 +2,7 @@ from notifications.utils import filter_notifications_by_date_range
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 from notifications.models import Notification
+from django.db.models import F
 
 
 @login_required
@@ -10,7 +11,7 @@ def alerts(request):
         Notification.objects.filter(recipient=request.user)
         .select_related("actor", "content_type")
         .prefetch_related("content_object")
-        .order_by("read")
+        .order_by(F("read"))
     )
     today_notifs = filter_notifications_by_date_range(
         notifications, request.GET.get("date_filter")
@@ -24,9 +25,7 @@ def alerts(request):
 @login_required
 def mark_as_read(request, id):
     url = request.META.get("HTTP_REFERER")
-    notification = get_object_or_404(Notification, id=id, read=False)
-    notification.read = True
-    notification.save()
+    Notification.objects.filter(id=id, read=False).update(read=True)
     return redirect(url)
 
 

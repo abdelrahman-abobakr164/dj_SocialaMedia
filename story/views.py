@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
+from django.db.models import F
 
 from .models import Story, StoryView
 
@@ -13,10 +14,7 @@ def create_story(request):
         caption = request.POST.get("caption")
 
         if file:
-            story = Story(user=request.user, caption=caption)
-            story.file = file
-            story.save()
-
+            Story.objects.create(user=request.user, caption=caption, file=file)
         else:
             return redirect("story:story_list")
 
@@ -44,7 +42,7 @@ def view_story(request, story_id):
     user_stories = (
         Story.objects.filter(user=story.user, expires_at__gt=timezone.now())
         .select_related("user")
-        .order_by("-created_at")
+        .order_by(F("-created_at"))
     )
 
     current_index = list(user_stories).index(story)
@@ -88,12 +86,8 @@ def story_viewers(request, story_id):
         StoryView.objects.filter(story=story)
         .select_related("viewer")
         .exclude(viewer=story.user)
-        .order_by("-viewed_at")
+        .order_by(F("-viewed_at"))
     )
 
-    context = {
-        "story": story,
-        "viewers": viewers,
-    }
-
+    context = {"story": story, "viewers": viewers}
     return render(request, "story/story_viewers.html", context)

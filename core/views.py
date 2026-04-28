@@ -4,11 +4,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Prefetch
-
 from django.views.generic import View
 from django.contrib import messages
-from accounts.models import Follow
+from django.db import transaction
+
+from core.decorators import owner_ship_rquired
 from core.utils import file_validation
+from accounts.models import Follow
 from story.models import *
 from core.models import *
 from core.forms import *
@@ -117,6 +119,7 @@ def home(request):
                 queryset=Comment.objects.filter(parent=None).select_related(
                     "user", "parent"
                 ),
+                to_attr="none_parent_comment",
             ),
         )
         .filter(
@@ -132,49 +135,6 @@ def home(request):
         "commentform": CommentForm(),
     }
     return render(request, "core/index.html", context)
-
-
-@login_required
-def upload(request):
-    url = request.META.get("HTTP_REFERER")
-    if request.method == "POST":
-        files = request.FILES.getlist("files")
-        tags = request.POST.get("tags")
-        caption = request.POST.get("caption")
-
-        if tags:
-            tag, created = Tag.objects.get_or_create(name=tags)
-        if files:
-            for file in files:
-                file_name = str(file.name)
-                if file_validation(file_name):
-                    post = Post.objects.create(user=request.user, caption=caption)
-                    PostMedia.objects.create(
-                        post=post,
-                        file=file,
-                        content_type=file.content_type.split("/")[0],
-                    )
-
-                    post.tag.add(tag) if tags else None
-                    post.save()
-
-                else:
-                    messages.error(request, f"file extension is not supported")
-                    return redirect(url)
-
-        else:
-            PostMedia.objects.create(
-                post=post,
-                content_type="body",
-            )
-            post.body = request.POST.get("body")
-
-            post.tag.add(tag) if tags else None
-
-            post.save()
-        return redirect(url)
-    else:
-        return redirect(url)
 
 
 class PostDetailView(LoginRequiredMixin, View):
@@ -196,6 +156,7 @@ class PostDetailView(LoginRequiredMixin, View):
 
 
 @login_required
+@owner_ship_rquired(Post, pk_kwarg="pk", user="user")
 def post_update(request, pk):
     post_obj = (
         Post.objects.select_related("user")
@@ -212,37 +173,7 @@ def post_update(request, pk):
     )
 
     if request.method == "POST":
-        files = request.FILES.getlist("files")
-        caption = request.POST.get("caption")
-        tags = request.POST.get("tags")
-
-        if files:
-            post_obj.media.all().delete()
-
-            for file in files:
-                file_name = str(file.name)
-                if file_validation(file_name):
-                    PostMedia.objects.update_or_create(
-                        post=post_obj,
-                        file=file,
-                        content_type=file.content_type.split("/")[0],
-                    )
-                    post_obj.caption = caption
-                    post_obj.body = ""
-
-                else:
-                    messages.error(request, f"file extension is not supported")
-                    return redirect("post-update", pk=pk)
-
-        else:
-            post_obj.caption = ""
-            post_obj.body = request.POST.get("body")
-
-        tag, created = Tag.objects.get_or_create(name=tags)
-        post_obj.tag.add(tag)
-        post_obj.save()
-
-        return redirect("post-update", pk=pk)
+        return upload(request, post_obj.id)
 
     context = {
         "post": post_obj,
@@ -253,14 +184,54 @@ def post_update(request, pk):
 
 
 @login_required
-def post_delete(request, id):
+def upload(request, pk=None):
     url = request.META.get("HTTP_REFERER")
+
+    if request.method == "POST":
+        files = request.FILES.getlist("files")
+        tag = request.POST.get("tags")
+
+        with transaction.atomic():
+            if pk:
+                post_obj = get_object_or_404(Post, id=pk)
+            else:
+                post_obj = Post.objects.create(user=request.user)
+
+            if files:
+                for file in files:
+                    if not file_validation(file):
+                        messages.error(request, "file extension is not supported")
+                        return redirect(url)
+
+                if pk:
+                    post_obj.media.all().delete()
+
+                for file in files:
+                    PostMedia.objects.create(
+                        post=post_obj,
+                        file=file,
+                        content_type=file.content_type.split("/")[0],
+                    )
+                post_obj.caption = request.POST.get("caption")
+
+            else:
+                post_obj.body = request.POST["body"]
+                
+            if tag:
+                tag, created = Tag.objects.get_or_create(name=tag)
+                post_obj.tag.add(tag)
+
+            post_obj.save()
+
+    return redirect(url)
+
+
+@login_required
+@owner_ship_rquired(Post, pk_kwarg="id", user="user")
+def post_delete(request, id):
     post = get_object_or_404(Post, id=id)
-    if request.user == post.user or request.user.is_admin:
-        post.delete()
-        return redirect("/")
-    else:
-        return redirect(url)
+    post.delete()
+    return redirect("/")
 
 
 @login_required
@@ -300,33 +271,24 @@ def create_comment(request):
 
 
 @login_required
+@owner_ship_rquired(Comment, pk_kwarg="id", user="user")
 def comment_update(request, id):
-    url = request.META.get("HTTP_REFERER")
     comment = Comment.objects.select_related("post").get(id=id)
-    if comment.user == request.user:
-        if request.method == "POST":
-            message = request.POST.get("comment")
-            comment.comment = message
-            comment.save()
-            return redirect(f"/detail/{comment.post.id}")
+    if request.method == "POST":
+        message = request.POST.get("comment")
+        comment.comment = message
+        comment.save()
+        return redirect(f"/detail/{comment.post.id}")
 
-    else:
-        return redirect(url)
-
-    context = {
-        "comment": comment,
-    }
-    return render(request, "core/comment-update.html", context)
+    return render(request, "core/comment-update.html", {"comment": comment})
 
 
 @login_required
+@owner_ship_rquired(Comment, pk_kwarg="id", user="user")
 def delete_comment(request, id):
     comment = get_object_or_404(Comment, id=id)
-    if request.user == comment.user or request.user == comment.user:
-        comment.delete()
-        return redirect("post-detail", pk=comment.post.id)
-    else:
-        return redirect(request.META.get("HTTP_REFERER"))
+    comment.delete()
+    return redirect("post-detail", pk=comment.post.id)
 
 
 @login_required

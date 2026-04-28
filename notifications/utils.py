@@ -5,6 +5,8 @@ from asgiref.sync import async_to_sync
 from django.utils.timesince import timesince
 from channels.layers import get_channel_layer
 from django.contrib.auth import get_user_model
+
+from .consumers import NotificationConsumer
 from notifications.models import Notification
 import logging
 
@@ -21,7 +23,6 @@ def send_notification_to_user(notification):
             return
 
         group_name = f"notifications_{notification.recipient.id}"
-        from .consumers import NotificationConsumer
 
         notification_data = {
             "id": str(notification.id),
@@ -51,8 +52,6 @@ def send_notification_to_user(notification):
             },
         )
 
-        logger.info(f"Notification sent to user {notification.recipient.id}")
-
     except Exception as e:
         logger.error(f"Error sending notification: {str(e)}")
 
@@ -66,7 +65,7 @@ def filter_notifications_by_date_range(queryset, date_range):
         yesterday = today - timedelta(days=1)
         return queryset.filter(created_at__date=yesterday)
     elif date_range == "last_30_days":
-        thirty_days_ago = today - timedelta(days=30)
-        return queryset.filter(created_at__date__gte=thirty_days_ago)
+        month_days_ago = today - timedelta(days=30)
+        return queryset.filter(created_at__date__gte=month_days_ago)
     else:
         return queryset.all()
