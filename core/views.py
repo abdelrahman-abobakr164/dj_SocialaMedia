@@ -8,7 +8,7 @@ from django.views.generic import View
 from django.contrib import messages
 from django.db import transaction
 
-from core.decorators import owner_ship_rquired
+from core.decorators import owner_ship_required
 from core.utils import file_validation
 from accounts.models import Follow
 from story.models import *
@@ -156,7 +156,7 @@ class PostDetailView(LoginRequiredMixin, View):
 
 
 @login_required
-@owner_ship_rquired(Post, pk_kwarg="pk", user="user")
+@owner_ship_required(Post, pk_kwarg="pk", user="user")
 def post_update(request, pk):
     post_obj = (
         Post.objects.select_related("user")
@@ -216,7 +216,7 @@ def upload(request, pk=None):
 
             else:
                 post_obj.body = request.POST["body"]
-                
+
             if tag:
                 tag, created = Tag.objects.get_or_create(name=tag)
                 post_obj.tag.add(tag)
@@ -227,7 +227,7 @@ def upload(request, pk=None):
 
 
 @login_required
-@owner_ship_rquired(Post, pk_kwarg="id", user="user")
+@owner_ship_required(Post, pk_kwarg="id", user="user")
 def post_delete(request, id):
     post = get_object_or_404(Post, id=id)
     post.delete()
@@ -271,7 +271,7 @@ def create_comment(request):
 
 
 @login_required
-@owner_ship_rquired(Comment, pk_kwarg="id", user="user")
+@owner_ship_required(Comment, pk_kwarg="id", user="user")
 def comment_update(request, id):
     comment = Comment.objects.select_related("post").get(id=id)
     if request.method == "POST":
@@ -284,7 +284,7 @@ def comment_update(request, id):
 
 
 @login_required
-@owner_ship_rquired(Comment, pk_kwarg="id", user="user")
+@owner_ship_required(Comment, pk_kwarg="id", user="user")
 def delete_comment(request, id):
     comment = get_object_or_404(Comment, id=id)
     comment.delete()

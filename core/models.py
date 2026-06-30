@@ -1,8 +1,9 @@
-from django.conf import settings
+import uuid
 from django.db import models
+from django.conf import settings
+from datetime import datetime, timedelta
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
-import uuid
 
 
 class Post(models.Model):
@@ -103,6 +104,9 @@ class Event(models.Model):
     date = models.DateTimeField()
     place = models.CharField(max_length=50)
     city = models.CharField(max_length=50)
+
+    def is_expired(self):
+        return datetime.now().date() > self.date.date()
 
     def __str__(self):
         return self.title

@@ -48,7 +48,7 @@ Thumbs.db
 .DS_Store
 *.lnk
 desktop.ini
-
+todo.txt
 *.pid
 *.seed
 *.pid.lock
