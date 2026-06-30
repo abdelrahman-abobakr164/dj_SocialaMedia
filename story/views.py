@@ -42,7 +42,7 @@ def view_story(request, story_id):
     user_stories = (
         Story.objects.filter(user=story.user, expires_at__gt=timezone.now())
         .select_related("user")
-        .order_by(F("-created_at"))
+        .order_by(F("created_at"))
     )
 
     current_index = list(user_stories).index(story)

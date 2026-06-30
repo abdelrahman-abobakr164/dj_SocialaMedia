@@ -1,15 +1,16 @@
 from story.models import Story
 from core.models import Event
+from celery import shared_task
+from django.utils import timezone
 
-def expired_story():
-    stories = Story.objects.all()
-    events = Event.objects.all()
-    for story in stories:
-        if story.is_expired():
-            story.delete()
-    
-    for event in events:
-        if event.is_expired():
-            event.delete()
-    
-    return None
+
+@shared_task
+def delete_expired_stories():
+    deleted_count, _ = Story.objects.filter(expires_at__lt=timezone.now()).delete()
+    return deleted_count
+
+
+@shared_task
+def delete_expired_events():
+    deleted_count, _ = Event.objects.filter(date__lt=timezone.now()).delete()
+    return deleted_count

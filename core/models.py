@@ -1,7 +1,7 @@
 import uuid
 from django.db import models
 from django.conf import settings
-from datetime import datetime, timedelta
+from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 
@@ -106,7 +106,7 @@ class Event(models.Model):
     city = models.CharField(max_length=50)
 
     def is_expired(self):
-        return datetime.now().date() > self.date.date()
+        return timezone.now() > self.date
 
     def __str__(self):
         return self.title

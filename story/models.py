@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from datetime import datetime, timedelta
+from django.utils import timezone
 import uuid
 
 
@@ -23,7 +24,7 @@ class Story(models.Model):
         return f"{self.user}'s story"
 
     def is_expired(self):
-        return datetime.now().date() > self.expires_at.date()
+        return timezone.now() > self.expires_at
 
     class Meta:
         verbose_name = "Story"
