@@ -38,6 +38,9 @@ celerybeat-schedule
 celerybeat.pid
 celerybeat-schedule-shm
 celerybeat-schedule-wal
+celerybeat-schedule.bak
+celerybeat-schedule.dat
+celerybeat-schedule.dir
 
 .vscode/
 .idea/
