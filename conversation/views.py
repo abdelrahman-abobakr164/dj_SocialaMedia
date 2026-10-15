@@ -95,11 +95,10 @@ def group(request, pk=None):
 def leave(request, pk):
     group = get_object_or_404(Conversation, pk=pk)
     if group.is_group and request.user in group.participants.all():
-        if request.user in group.admin.all():
-            if request.user == group.admin.all():
-                group.delete()
-            else:
-                group.admin.remove(request.user)
+        if request.user in group.admin.all() and request.user == group.admin.all():
+            group.delete()
+        else:
+            group.admin.remove(request.user)
         group.participants.remove(request.user)
         group.save()
         return redirect("conversations")
@@ -192,7 +191,7 @@ def conversations(request):
 def chat_room(request, pk):
     try:
         url = request.META.get("HTTP_REFERER")
-        chat = Conversation.objects.select_related("participants", "admin").get(pk=pk)
+        chat = Conversation.objects.prefetch_related("participants", "admin").get(pk=pk)
 
         if request.user not in chat.participants.all():
             return redirect("conversations")
@@ -315,7 +314,7 @@ def block(request):
     )
 
     blocked_conversations = (
-        Conversation.objects.select_related("participants", "admin")
+        Conversation.objects.prefetch_related("participants", "admin")
         .prefetch_related(
             Prefetch(
                 "conversation_status",

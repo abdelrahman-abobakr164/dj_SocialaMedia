@@ -28,7 +28,7 @@ def generate_follow_suggestions(user, max_results=5):
             ]
             suggestions.extend(top_suggestions)
 
-        if len(suggestions) < max_results:
+        if len(suggestions) < max_results:  
             remaining = max_results - len(suggestions)
             popular_user = (
                 User.objects.filter(id__in=UIfollowing)

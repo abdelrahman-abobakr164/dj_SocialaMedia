@@ -57,7 +57,7 @@ def create_checkout_session(request, user_id):
 def stripe_webhook(request):
     payload = request.body
     sig_header = request.META["HTTP_STRIPE_SIGNATURE"]
-    webhook_secret = "whsec_71ciZDknZ6mBfYoAo1okqFWFt4Em17Ls"
+    webhook_secret = settings.STRIPE_WEBHOOK
 
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
