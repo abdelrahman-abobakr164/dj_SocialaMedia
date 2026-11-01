@@ -271,6 +271,8 @@
                                             <button type="submit" class="btn"> <i class="feather-send mb-1 text-white font-md text-white position-absolute" style="bottom: 35px;right:30px;"></i></button>
                                         </div>
                                     </form>
+                                    {% empty %}
+                                    <h1 class="text-center" style='color:grey; margin-top: 25%'><i class="feather-lock"></i> This Account is Private</h1>
                                 </div>
                             {% endfor %}
                         </div>

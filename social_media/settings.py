@@ -92,7 +92,7 @@ TEMPLATES = [
     },
 ]
 
-ASGI_APPLICATION = "social_media.as gi.application"
+ASGI_APPLICATION = "social_media.asgi.application"
 WSGI_APPLICATION = "social_media.wsgi.application"
 
 CHANNEL_LAYERS = {

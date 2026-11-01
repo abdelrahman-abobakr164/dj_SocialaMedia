@@ -1,10 +1,10 @@
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.db.models import Q, Prefetch, Count, Exists, OuterRef
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from accounts.utils import generate_follow_suggestions
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
-from django.db.models import Q, Prefetch
 from django.core.mail import send_mail
 from django.contrib import messages
 from django.conf import settings
@@ -18,6 +18,7 @@ from core.models import *
 import stripe
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+stripe.client_id = settings.STRIPE_PUBLISHABLE_KEY
 
 User = get_user_model()
 
@@ -79,8 +80,8 @@ def stripe_webhook(request):
 @login_required
 def videos(request, slug):
     user = get_object_or_404(User, slug=slug)
-    if request.user == user or user.is_private == False:
-        posts = (
+    posts = (
+        (
             Post.objects.prefetch_related(
                 Prefetch(
                     "media", queryset=PostMedia.objects.all(), to_attr="postattach"
@@ -95,27 +96,29 @@ def videos(request, slug):
             .filter(media__content_type="video")
             .filter(user=user)
         )
+        if request.user == user or user.is_private == False
+        else None
+    )
 
-    else:
-        posts = []
     return render(request, "accounts/videos.html", {"profile": user, "posts": posts})
 
 
 @login_required
 def profile(request, slug):
     user = get_object_or_404(User, slug=slug)
+    viewer = request.user
+
     conversation = (
-        Conversation.objects.filter(Q(participants=user))
-        .filter(Q(participants=request.user))
+        Conversation.objects.filter(participants=user)
+        .filter(participants=viewer)
         .first()
     )
 
-    if request.user != user and request.user.is_admin == False:
-        user.viewers.add(request.user)
+    if viewer != user and viewer.is_admin == False:
+        user.viewers.add(viewer)
 
-    if user.is_private == True or request.user == user:
-
-        posts = (
+    posts = (
+        (
             Post.objects.prefetch_related(
                 Prefetch(
                     "comments",
@@ -126,40 +129,41 @@ def profile(request, slug):
             .filter(user=user)
             .order_by("-created_at")
         )
+        if user.is_private == True or viewer == user
+        else None
+    )
+    accepted, pending = Follow.Status.ACCEPTED, Follow.Status.PENDING
+    aggregates = {
+        "following_count": Count("pk", filter=Q(follower=user, status=accepted)),
+        "followers_count": Count("pk", filter=Q(following=user, status=accepted)),
+        "is_following": Count(
+            "pk",
+            filter=Q(follower=viewer, following=user, status=accepted),
+        ),
+        "is_follower": Count(
+            "pk",
+            filter=Q(follower=user, following=viewer, status=accepted),
+        ),
+        "is_pending": Count(
+            "pk",
+            filter=Q(follower=viewer, following=user, status=pending),
+        ),
+    }
 
-    else:
-        posts = []
-
-    is_following = Follow.objects.filter(
-        follower=request.user, following=user, status=Follow.Status.ACCEPTED
-    ).exists()
-
-    is_follower = Follow.objects.filter(
-        follower=user, following=request.user, status=Follow.Status.ACCEPTED
-    ).exists()
-
-    is_pending = Follow.objects.filter(
-        follower=request.user, following=user, status=Follow.Status.PENDING
-    ).exists()
-
-    FollowingCount = Follow.objects.filter(
-        follower=user, status=Follow.Status.ACCEPTED
-    ).count()
-    FollowersCount = Follow.objects.filter(
-        following=user, status=Follow.Status.ACCEPTED
-    ).count()
-
+    stats = Follow.objects.filter(Q(follower=user) | Q(following=user)).aggregate(
+        **aggregates
+    )
     context = {
         "profile": user,
         "posts": posts,
         "conversation": conversation,
-        "is_following": is_following,
-        "is_follower": is_follower,
-        "is_pending": is_pending,
-        "FollowingCount": FollowingCount,
-        "FollowersCount": FollowersCount,
-        "stripe_public_key": "pk_test_51Q3xnYH4IAM7G10vw0mAzfEqkajCpWH5PuIrYJziEdvBURYUnHzQXitK8ntYVdqoGknPH0fw9p8cHoErROxU1eGu00xRPC5XiA",
+        "is_following": bool(stats.get("is_following")),
+        "is_follower": bool(stats.get("is_follower")),
+        "is_pending": bool(stats.get("is_pending")),
+        "FollowingCount": stats["following_count"],
+        "FollowersCount": stats["followers_count"],
     }
+    context["stripe_public_key"] = stripe.client_id if user == viewer else None
     return render(request, "accounts/profile.html", context)
 
 
@@ -185,18 +189,18 @@ def follow_suggestions(request):
 
 @login_required
 def pending_requests(request):
-    PendingList = Follow.objects.filter(
-        following=request.user, status=Follow.Status.PENDING
+    pending_list = (
+        Follow.objects.filter(following=request.user, status=Follow.Status.PENDING)
+        .select_related("follower")
+        .annotate(
+            followers_count=Count(
+                "follower__followers",
+                filter=Q(follower__followers__status=Follow.Status.ACCEPTED),
+            )
+        )
     )
 
-    FollowersCount = 0
-
-    for i in PendingList:
-        FollowersCount = Follow.objects.filter(
-            following=i.follower, status=Follow.Status.ACCEPTED
-        ).count()
-
-    context = {"FollowersCount": FollowersCount, "PendingList": PendingList}
+    context = {"pending_list": pending_list}
     return render(request, "accounts/pending-requests.html", context)
 
 
@@ -204,7 +208,14 @@ def pending_requests(request):
 def user_following(request, slug):
     user = get_object_or_404(User, slug=slug)
     if user.show_following == True or request.user == user:
-        following = Follow.objects.filter(follower=user, status=Follow.Status.ACCEPTED)
+
+        accepted = Follow.Status.ACCEPTED
+
+        following = (
+            Follow.objects.filter(follower=user, status=accepted)
+            .select_related("follower", "following")
+            .values_list("follower_id", "following_id")
+        )
 
         following_list = []
         for i in following:
@@ -212,21 +223,21 @@ def user_following(request, slug):
             is_following = Follow.objects.filter(
                 follower=request.user,
                 following=i.following,
-                status=Follow.Status.ACCEPTED,
+                status=accepted,
             ).exists()
 
             is_follower = Follow.objects.filter(
                 following=request.user,
                 follower=i.following,
-                status=Follow.Status.ACCEPTED,
+                status=accepted,
             ).exists()
 
             followers_count = Follow.objects.filter(
-                following=i.following, status=Follow.Status.ACCEPTED
+                following=i.following, status=accepted
             )
 
             following_count = Follow.objects.filter(
-                follower=i.following, status=Follow.Status.ACCEPTED
+                follower=i.following, status=accepted
             )
 
             following_list.append(
@@ -252,44 +263,42 @@ def user_following(request, slug):
 def user_followers(request, slug):
     user = get_object_or_404(User, slug=slug)
     if user.show_followers == True or request.user == user:
-        followers = Follow.objects.filter(following=user, status=Follow.Status.ACCEPTED)
+        accepted = Follow.Status.ACCEPTED
 
-        followers_list = []
+        viewer_follows_them = Follow.objects.filter(
+            follower=request.user,
+            following=OuterRef("following"),
+            status=accepted,
+        )
 
-        for i in followers:
-            is_following = Follow.objects.filter(
-                follower=request.user,
-                following=i.follower,
-                status=Follow.Status.ACCEPTED,
-            ).exists()
+        they_follow_viewer = Follow.objects.filter(
+            following=request.user,
+            follower=OuterRef("following"),
+            status=accepted,
+        )
 
-            is_follower = Follow.objects.filter(
-                following=request.user,
-                follower=i.follower,
-                status=Follow.Status.ACCEPTED,
-            ).exists()
-
-            followers_count = Follow.objects.filter(
-                following=i.follower, status=Follow.Status.ACCEPTED
-            ).count()
-
-            following_count = Follow.objects.filter(
-                follower=i.follower, status=Follow.Status.ACCEPTED
-            ).count()
-
-            followers_list.append(
-                {
-                    "followers_count": followers_count,
-                    "following_count": following_count,
-                    "user": i.follower,
-                    "is_follower": is_follower,
-                    "is_following": is_following,
-                }
+        following_list = (
+            Follow.objects.filter()
+            .select_related("following")
+            .annotate(
+                is_follower=Exists(viewer_follows_them),
+                is_following=Exists(they_follow_viewer),
+                followers_count=Count(
+                    "following__followers",
+                    filter=Q(following__followers__status=accepted),
+                    distinct=True,
+                ),
+                following_count=Count(
+                    "following_following",
+                    filter=Q(following__following__status=accepted),
+                    distinct=True,
+                ),
             )
+        )
 
         context = {
             "user": user,
-            "followers_list": followers_list,
+            "followers_list": following_list,
         }
         return render(request, "accounts/followers.html", context)
     else:
@@ -316,7 +325,7 @@ def send_follow(request, id):
         elif existing_request.status == Follow.Status.PENDING:
             messages.warning(request, "Request already pending")
 
-    elif user.check_followers == False or request.user.is_admin:
+    elif user.check_followers == False:
         Follow.objects.create(
             follower=request.user, following=user, status=Follow.Status.ACCEPTED
         )
@@ -350,16 +359,13 @@ def send_follow(request, id):
 def user_unfollow(request, id):
     url = request.META.get("HTTP_REFERER")
     user = get_object_or_404(User, id=id)
-    UserUnfollow = Follow.objects.filter(follower=request.user, following=user)
 
     if request.user == user:
         return redirect("profile", slug=user.slug)
 
-    elif UserUnfollow.exists():
-        UserUnfollow.delete()
-        messages.success(request, f"You have unfollowed {user.username}")
-    else:
-        messages.warning(request, f"You were not following {user.username}")
+    unfollow = get_object_or_404(Follow, follower=request.user, following=user)
+    unfollow.delete()
+    messages.success(request, f"You have unfollowed {user.username}")
 
     return redirect(url)
 
@@ -383,6 +389,9 @@ def respond_to_follow(request, id, action):
     url = request.META.get("HTTP_REFERER")
     follow_request = get_object_or_404(Follow, id=id)
 
+    if action not in ("accept", "cancel"):
+        messages.error(request, "Wrong Action")
+
     if action == "accept":
         follow_request.status = "accepted"
         follow_request.save()
@@ -391,8 +400,8 @@ def respond_to_follow(request, id, action):
         following = User.objects.get(id=follow_request.following.id)
 
         conversation = (
-            Conversation.objects.filter(Q(participants=follower)).filter(
-                Q(participants=follower)
+            Conversation.objects.filter(participants=follower).filter(
+                participants=follower
             )
         ).exists()
 
@@ -431,9 +440,9 @@ def cancel_request(request, id):
 @login_required
 def viewers_list(request, slug):
     if request.user.slug != slug:
-        return redirect(f"/accounts/{slug}")
+        return redirect("profile", slug)
 
-    if request.user.verified or request.user.is_admin:
+    if request.user.verified:
         profile = get_object_or_404(User, slug=slug)
         visitors = profile.viewers.all()
 

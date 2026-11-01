@@ -6,7 +6,7 @@ django.setup()
 
 from channels.security.websocket import AllowedHostsOriginValidator
 from channels.routing import ProtocolTypeRouter, URLRouter
-from dj ango.core.asgi import get_asgi_application
+from django.core.asgi import get_asgi_application
 from channels.auth import AuthMiddlewareStack
 import notifications.routing
 import conversation.routing
