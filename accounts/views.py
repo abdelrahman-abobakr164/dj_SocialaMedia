@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.contrib import messages
+from django.db import transaction
 from django.conf import settings
 
 from notifications.models import Notification
@@ -207,102 +208,78 @@ def pending_requests(request):
 @login_required
 def user_following(request, slug):
     user = get_object_or_404(User, slug=slug)
-    if user.show_following == True or request.user == user:
+    if not (user.show_following == True or request.user == user):
+        return redirect("profile", slug)
 
-        accepted = Follow.Status.ACCEPTED
+    accepted = Follow.Status.ACCEPTED
 
-        following = (
-            Follow.objects.filter(follower=user, status=accepted)
-            .select_related("follower", "following")
-            .values_list("follower_id", "following_id")
+    they_follow_viewer = Follow.objects.filter(
+        following=request.user, follower=OuterRef("following"), status=accepted
+    )
+
+    following_list = (
+        Follow.objects.filter(follower=user, status=accepted)
+        .select_related("following")
+        .annotate(
+            is_following=Exists(they_follow_viewer),
+            followers_count=Count(
+                "following__following",
+                filter=Q(following__followers__status=accepted),
+                distinct=True,
+            ),
+            following_count=Count(
+                "following__followers",
+                filter=Q(following__following__status=accepted),
+                distinct=True,
+            ),
         )
+    )
 
-        following_list = []
-        for i in following:
-
-            is_following = Follow.objects.filter(
-                follower=request.user,
-                following=i.following,
-                status=accepted,
-            ).exists()
-
-            is_follower = Follow.objects.filter(
-                following=request.user,
-                follower=i.following,
-                status=accepted,
-            ).exists()
-
-            followers_count = Follow.objects.filter(
-                following=i.following, status=accepted
-            )
-
-            following_count = Follow.objects.filter(
-                follower=i.following, status=accepted
-            )
-
-            following_list.append(
-                {
-                    "user": i.following,
-                    "is_following": is_following,
-                    "followers_count": followers_count,
-                    "following_count": following_count,
-                    "is_follower": is_follower,
-                }
-            )
-
-        context = {
-            "following_list": following_list,
-            "user": user,
-        }
-        return render(request, "accounts/following.html", context)
-    else:
-        return redirect(f"/accounts/{slug}/")
+    context = {
+        "following_list": following_list,
+        "user": user,
+    }
+    return render(request, "accounts/following.html", context)
 
 
 @login_required
 def user_followers(request, slug):
     user = get_object_or_404(User, slug=slug)
-    if user.show_followers == True or request.user == user:
-        accepted = Follow.Status.ACCEPTED
 
-        viewer_follows_them = Follow.objects.filter(
-            follower=request.user,
-            following=OuterRef("following"),
-            status=accepted,
+    if not (user.show_followers or request.user == user):
+        return redirect("profile", slug)
+
+    accepted = Follow.Status.ACCEPTED
+
+    they_follow_viewer = Follow.objects.filter(
+        following=request.user,
+        follower=OuterRef("follower"),
+        status=accepted,
+    )
+
+    followers_list = (
+        Follow.objects.filter(following=user, status=accepted)
+        .select_related("follower")
+        .annotate(
+            is_following=Exists(they_follow_viewer),
+            followers_count=Count(
+                "follower__followers",
+                filter=Q(follower__followers__status=accepted),
+                distinct=True,
+            ),
+            following_count=Count(
+                "follower__following",
+                filter=Q(follower__following__status=accepted),
+                distinct=True,
+            ),
         )
+    )
 
-        they_follow_viewer = Follow.objects.filter(
-            following=request.user,
-            follower=OuterRef("following"),
-            status=accepted,
-        )
-
-        following_list = (
-            Follow.objects.filter()
-            .select_related("following")
-            .annotate(
-                is_follower=Exists(viewer_follows_them),
-                is_following=Exists(they_follow_viewer),
-                followers_count=Count(
-                    "following__followers",
-                    filter=Q(following__followers__status=accepted),
-                    distinct=True,
-                ),
-                following_count=Count(
-                    "following_following",
-                    filter=Q(following__following__status=accepted),
-                    distinct=True,
-                ),
-            )
-        )
-
-        context = {
-            "user": user,
-            "followers_list": following_list,
-        }
-        return render(request, "accounts/followers.html", context)
-    else:
-        return redirect(f"/accounts/{slug}/")
+    context = {
+        "user": user,
+        "followers_list": followers_list,
+    }
+    return render(request, "accounts/followers.html", context)
 
 
 @login_required
@@ -314,45 +291,43 @@ def send_follow(request, id):
         messages.warning(request, "You cannot send follow request to yourself")
         return redirect(url)
 
-    existing_request = Follow.objects.filter(
-        follower=request.user, following=user
-    ).first()
+    existing = Follow.objects.filter(follower=request.user, following=user).first()
 
-    if existing_request:
-        if existing_request.status == Follow.Status.ACCEPTED:
+    accepted, pending = Follow.Status.ACCEPTED, Follow.Status.PENDING
+
+    if existing:
+        if existing.status == accepted:
             messages.warning(request, "You are already following this user")
-
-        elif existing_request.status == Follow.Status.PENDING:
+        else:
             messages.warning(request, "Request already pending")
+        return redirect(url)
 
-    elif user.check_followers == False:
-        Follow.objects.create(
-            follower=request.user, following=user, status=Follow.Status.ACCEPTED
-        )
+    requires_approval = user.check_followers
+    status = pending if requires_approval else accepted
 
-        follower = User.objects.get(id=request.user.id)
-        following = User.objects.get(id=user.id)
+    with transaction.atomic():
 
-        conversation = (
-            Conversation.objects.filter(Q(participants=user)).filter(
-                Q(participants=request.user)
-            )
-        ).exists()
+        Follow.objects.create(follower=request.user, following=user, status=status)
 
-        if not conversation:
-            conversation = Conversation.objects.create()
-            conversation.participants.add(follower, following)
+        if requires_approval:
+            ensure_conversation(request.user, user)
 
+    if requires_approval:
         messages.success(request, f"You are now following {user.username}")
-        return redirect(url)
-
     else:
-        Follow.objects.create(
-            follower=request.user, following=user, status=Follow.Status.PENDING
-        )
-
         messages.success(request, "Follow request sent successfully")
-        return redirect(url)
+
+    return redirect(url)
+
+
+def ensure_conversation(user_a, user_b):
+    conversation = (
+        Conversation.objects.filter(participants=user_a).filter(participants=user_b)
+    ).exists()
+
+    if not conversation:
+        conversation = Conversation.objects.create()
+        conversation.participants.add(user_a, user_b)
 
 
 @login_required
