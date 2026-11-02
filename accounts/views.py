@@ -1,3 +1,4 @@
+import time
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.db.models import Q, Prefetch, Count, Exists, OuterRef
 from django.shortcuts import render, redirect, get_object_or_404
@@ -10,10 +11,14 @@ from django.contrib import messages
 from django.db import transaction
 from django.conf import settings
 
-from notifications.models import Notification
+from accounts.profiling import profile_queries
 from accounts.models import Follow
-from conversation.models import *
 from accounts.forms import *
+
+from notifications.models import Notification
+
+from conversation.models import *
+
 from core.models import *
 
 import stripe
@@ -284,11 +289,12 @@ def user_followers(request, slug):
 
 @login_required
 def send_follow(request, id):
+    start_time = time.perf_counter()
     url = request.META.get("HTTP_REFERER")
     user = get_object_or_404(User, id=id)
 
     if request.user == user:
-        messages.warning(request, "You cannot send follow request to yourself")
+        messages.warning(request, "You cannot send a follow request to yourself")
         return redirect(url)
 
     existing = Follow.objects.filter(follower=request.user, following=user).first()
@@ -299,7 +305,7 @@ def send_follow(request, id):
         if existing.status == accepted:
             messages.warning(request, "You are already following this user")
         else:
-            messages.warning(request, "Request already pending")
+            messages.warning(request, "You already have a pending follow request")
         return redirect(url)
 
     requires_approval = user.check_followers
@@ -309,14 +315,16 @@ def send_follow(request, id):
 
         Follow.objects.create(follower=request.user, following=user, status=status)
 
-        if requires_approval:
+        if not requires_approval:
             ensure_conversation(request.user, user)
 
     if requires_approval:
-        messages.success(request, f"You are now following {user.username}")
+        messages.success(request, "Follow request has been sent successfully")
     else:
-        messages.success(request, "Follow request sent successfully")
+        messages.success(request, f"You are now following {user.username}")
 
+    elapsed = time.perf_counter() - start_time
+    print(f"send_follow execution time: {elapsed:.6f} seconds")
     return redirect(url)
 
 

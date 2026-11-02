@@ -7,11 +7,8 @@ from django.db.models import F
 
 @login_required
 def alerts(request):
-    notifications = (
-        Notification.objects.filter(recipient=request.user)
-        .select_related("actor", "content_type")
-        .prefetch_related("content_object")
-        .order_by(F("read"))
+    notifications = Notification.objects.filter(recipient=request.user).order_by(
+        F("read")
     )
     today_notifs = filter_notifications_by_date_range(
         notifications, request.GET.get("date_filter")
@@ -32,12 +29,14 @@ def mark_as_read(request, id):
 @login_required
 def mark_all_as_read(request):
     url = request.META.get("HTTP_REFERER")
-    notifications = Notification.objects.filter(
-        recipient=request.user, read=False
-    ).order_by("-created_at")[:5]
+    latest_ids = list(
+        Notification.objects.filter(recipient=request.user, read=False)
+        .order_by("-created_at", "-id")
+        .values_list("id", flat=True)[:5]
+    )
 
     Notification.objects.filter(
-        id__in=notifications, recipient=request.user, read=False
+        id__in=latest_ids, recipient=request.user, read=False
     ).update(read=True)
 
     return redirect(url)
@@ -45,5 +44,5 @@ def mark_all_as_read(request):
 
 @login_required
 def delete_all(request):
-    Notification.objects.filter(recipient=request.user).delete()
+    get_object_or_404(Notification, recipient=request.user).delete()
     return redirect("notifications")

@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Prefetch
 from django.views.generic import View
@@ -25,8 +26,7 @@ def events(request):
         Q(city=request.user.city) | Q(user=request.user)
     ).prefetch_related("user")
 
-    s = request.GET.get("s")
-    if s:
+    if s := request.GET.get("s"):
         events = Event.objects.filter(Q(title__icontains=s)).prefetch_related("user")
 
     if request.method == "POST":
@@ -49,17 +49,14 @@ def events(request):
 @login_required
 def profile_event(request, slug):
     user = get_object_or_404(User, slug=slug)
-    s = request.GET.get("q")
+    can_view = user.show_events or request.user == user
 
-    if user.show_events == False and request.user == user:
-        events = Event.objects.filter(user=user).prefetch_related("user")
-    elif user.show_events == True:
-        events = Event.objects.filter(user=user).prefetch_related("user")
-    else:
-        events = []
+    events = (
+        Event.objects.filter(user=user).prefetch_related("user") if can_view else None
+    )
 
-    if s:
-        events = events.filter(Q(title__icontains=s))
+    if s := request.GET.get("q"):
+        events = events.filter(Q(title__icontains=s) | Q(place__icontains=s))
 
     return render(
         request, "core/profile_event.html", {"events": events, "profile": user}
@@ -68,30 +65,22 @@ def profile_event(request, slug):
 
 @login_required
 def search(request):
-    username = request.GET.get("username")
-    if username:
-        users = (
-            User.objects.filter(Q(username__icontains=username))
-            .exclude(
-                username=request.user.username,
-            )
-            .exclude(is_admin=True if request.user.is_superuser == False else None)
+    if username := request.GET.get("username"):
+        users = User.objects.filter(username__icontains=username).exclude(
+            username=request.user.username
         )
 
-        btn = None
         for user in users:
             if users.exists():
-                is_following = Follow.objects.filter(
-                    follower=request.user, following=user, status=Follow.Status.ACCEPTED
-                ).exists()
-                if is_following:
-                    btn = "UnFollow"
+                follow_status = Follow.objects.filter(
+                    follower=request.user,
+                    following=user,
+                ).first()
 
-                elif Follow.objects.filter(
-                    follower=request.user, following=user, status=Follow.Status.PENDING
-                ).exists():
-                    btn = "Pending"
-
+                if follow_status:
+                    btn = (
+                        "UnFollow" if follow_status.status == "accepted" else "Pending"
+                    )
                 else:
                     btn = "Follow"
 
@@ -184,44 +173,39 @@ def post_update(request, pk):
 
 
 @login_required
+@require_POST
 def upload(request, pk=None):
     url = request.META.get("HTTP_REFERER")
 
-    if request.method == "POST":
-        files = request.FILES.getlist("files")
-        tag = request.POST.get("tags")
+    files = request.FILES.getlist("files")
+    tag = request.POST.get("tags")
 
-        with transaction.atomic():
+    with transaction.atomic():
+        post_obj, _ = Post.objects.get_or_create(pk=pk, defaults={"user": request.user})
+
+        if files:
+
             if pk:
-                post_obj = get_object_or_404(Post, id=pk)
-            else:
-                post_obj = Post.objects.create(user=request.user)
+                post_obj.media.all().delete()
 
-            if files:
-                for file in files:
-                    if not file_validation(file):
-                        messages.error(request, "file extension is not supported")
-                        return redirect(url)
-
-                if pk:
-                    post_obj.media.all().delete()
-
-                for file in files:
+            for file in files:
+                if file_validation(file):
                     PostMedia.objects.create(
                         post=post_obj,
                         file=file,
                         content_type=file.content_type.split("/")[0],
                     )
-                post_obj.caption = request.POST.get("caption")
 
-            else:
-                post_obj.body = request.POST["body"]
+            post_obj.caption = request.POST.get("caption")
 
-            if tag:
-                tag, created = Tag.objects.get_or_create(name=tag)
-                post_obj.tag.add(tag)
+        else:
+            post_obj.body = request.POST["body"]
 
-            post_obj.save()
+        if tag:
+            tag, _ = Tag.objects.get_or_create(name=tag)
+            post_obj.tag.add(tag)
+
+        post_obj.save()
 
     return redirect(url)
 
@@ -235,50 +219,43 @@ def post_delete(request, id):
 
 
 @login_required
+@require_POST
 def create_comment(request):
     url = request.META.get("HTTP_REFERER")
     form = CommentForm(request.POST)
+    post_id = request.POST.get("post_id")
+    parent = request.POST.get("parent")
+    comment = request.POST.get("comment")
 
-    if request.method == "POST":
-        if form.is_valid():
-            post_id = request.POST.get("post_id")
-            parent = request.POST.get("parent")
-            comment = request.POST.get("comment")
+    if not form.is_valid():
+        messages.error(request, "this field is required")
 
-            if not comment:
-                messages.error(request, "Comment text is required")
-                return redirect(url)
+    comment = Comment.objects.create(
+        user=request.user,
+        post=Post.objects.get(id=post_id),
+        comment=comment,
+    )
 
-            comment = Comment.objects.create(
-                user=request.user,
-                post=Post.objects.get(id=post_id),
-                comment=comment,
-            )
+    if parent:
+        parent_comment = Comment.objects.get(id=parent)
+        comment.parent = parent_comment
+        comment.save()
 
-            if parent:
-                parent_comment = Comment.objects.get(id=parent)
-                comment.parent = parent_comment
-                comment.save()
-
-                return redirect(url)
-
-            return redirect(url)
-
-        else:
-            messages.error(request, "this field is required")
-
-    return redirect(url)
+        return redirect(url)
 
 
 @login_required
 @owner_ship_required(Comment, pk_kwarg="id", user="user")
 def comment_update(request, id):
-    comment = Comment.objects.select_related("post").get(id=id)
+    comment = get_object_or_404(Comment, id=id)
     if request.method == "POST":
         message = request.POST.get("comment")
+        if not message:
+            messages.error(request, "Comment Field Required")
+
         comment.comment = message
         comment.save()
-        return redirect(f"/detail/{comment.post.id}")
+        return redirect("comment-update", id)
 
     return render(request, "core/comment-update.html", {"comment": comment})
 

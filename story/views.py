@@ -11,12 +11,13 @@ from .models import Story, StoryView
 def create_story(request):
     if request.method == "POST":
         file = request.FILES.get("file")
-        caption = request.POST.get("caption")
 
-        if file:
-            Story.objects.create(user=request.user, caption=caption, file=file)
-        else:
+        if not file:
             return redirect("story:story_list")
+
+        Story.objects.create(
+            user=request.user, caption=request.POST["caption"], file=file
+        )
 
         return redirect("story:story_list")
 

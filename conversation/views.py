@@ -258,28 +258,18 @@ def chat_room(request, pk):
                     elif files or content:
                         for file in files:
                             if file_validation(file):
-                                if validate_file_size(file):
-                                    message = Message.objects.create(
-                                        conversation=chat,
-                                        content=content if content else "",
-                                        sender=request.user,
-                                    )
-                                    MessageAttachment.objects.create(
-                                        file=file,
-                                        message=message,
-                                        file_name=file.name,
-                                        file_type=file.content_type.split("/")[0],
-                                    )
-                                else:
-                                    messages.warning(
-                                        request, f"File size exceeds 10MB."
-                                    )
-                                    return redirect(url)
-                            else:
-                                messages.warning(
-                                    request, f"File Extension is not Supported"
+                                message = Message.objects.create(
+                                    conversation=chat,
+                                    content=content if content else "",
+                                    sender=request.user,
                                 )
-                                return redirect(url)
+                                MessageAttachment.objects.create(
+                                    file=file,
+                                    message=message,
+                                    file_name=file.name,
+                                    file_type=file.content_type.split("/")[0],
+                                )
+
                     else:
                         messages.error(request, "Don't Mess")
                         return redirect(url)
