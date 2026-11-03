@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.db import transaction
 
 from core.decorators import owner_ship_required
-from core.utils import file_validation
+from core.validations import file_validation
 from accounts.models import Follow
 from story.models import *
 from core.models import *

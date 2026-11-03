@@ -1,10 +1,12 @@
 from django import forms
-
-from core.utils import file_validation
+from django.core.exceptions import ValidationError
+from core.validations import file_validation
 from .models import Conversation
 
 
 class CreateForm(forms.ModelForm):
+    MIN_OTHER_MEMBERS = 2
+
     group_name = forms.CharField(
         required=True,
         widget=forms.TextInput(
@@ -17,11 +19,40 @@ class CreateForm(forms.ModelForm):
 
     class Meta:
         model = Conversation
-        fields = ["group_name", "group_image"]
+        fields = ["group_name", "group_image", "admin", "participants"]
+        widgets = {
+            "admin": forms.CheckboxSelectMultiple,
+            "participants": forms.CheckboxSelectMultiple,
+        }
+
+    def __init__(self, *args, candidates, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in ("admin", "participants"):
+            field = self.fields[name]
+            field.queryset = candidates
+            field.label_from_instance = lambda user: user.username
+        self.fields["admin"].required = False
+
+    def clean_group_image(self):
+        image = self.cleaned_data.get("group_image")
+        if image and "group_image" in self.changed_data:
+            file_validation(image)
+        return image
+
+    def clean_participants(self):
+        participants = self.cleaned_data["participants"]
+        if participants.count() < self.MIN_OTHER_MEMBERS:
+            raise ValidationError(
+                f"Select at least {self.MIN_OTHER_MEMBERS} other members "
+                "(a group needs 3 including you)."
+            )
+        return participants
 
     def clean(self):
-        file_name = self.cleaned_data.get("group_image")
-        if file_name:
-            if not file_validation(file_name):
-                raise forms.ValidationError("File Extension is Not Supported ")
-            return file_name
+        cleaned = super().clean()
+        admins = cleaned.get("admin")
+        participants = cleaned.get("participants")
+        if admins is not None and participants is not None:
+            if admins.exclude(pk__in=participants).exists():
+                self.add_error("admin", "Every admin must also be a selected member.")
+        return cleaned

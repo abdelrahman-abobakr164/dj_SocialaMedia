@@ -2,14 +2,11 @@ from notifications.utils import filter_notifications_by_date_range
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 from notifications.models import Notification
-from django.db.models import F
 
 
 @login_required
 def alerts(request):
-    notifications = Notification.objects.filter(recipient=request.user).order_by(
-        F("read")
-    )
+    notifications = Notification.objects.filter(recipient=request.user)
     today_notifs = filter_notifications_by_date_range(
         notifications, request.GET.get("date_filter")
     )

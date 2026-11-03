@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
 {% block title %}
-{% if '/conversations/group/' == request.path %}
-    Create Group
+{% if pk %}
+{{ conversation.group_name }}'s Group
 {% else %}
-    {{ conversation.group_name }}'s Group
+Create Group
 {% endif %}
 {% endblock title %}
 
@@ -97,10 +97,10 @@
 <div class="container d-flex justify-content-center align-items-center" style='margin-top:120px'>
     <div class="card shadow-lg w-100" style="max-width: 500px;">
         <div class="card-body p-4">
-            {% if '/conversations/group/' == request.path %}
-                <h2 class="card-title text-center mb-4">Create a Group</h2>
+            {% if pk %}
+            <h2 class="card-title text-center mb-4">{{ conversation.group_name }}'s Group </h2>
             {% else %}
-                <h2 class="card-title text-center mb-4">{{ conversation.group_name }}'s Group </h2>
+            <h2 class="card-title text-center mb-4">Create a Group</h2>
             {% endif %}
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
@@ -120,29 +120,36 @@
                         </div>
                     </div>
                 </div><hr>
-                {% if pk %}
-                    <div class="form-group mb-4">
-                        <h5 class="font-weight-bold">ADMINS:</h5>
-                        {% for user in conversation.admin.all %}
-                            <input type="checkbox" {% if user in conversation.admin.all %} checked {% endif %} value="{{ user.id }}" name="admins" id="admins">
-                            <img src="{{user.img.url}}" style='border-radius: 50%; max-height: 25px' alt="Admin's Img">
-                            <label for="admins" class="font-weight-bold">{% if request.user.username == user.username %} You {% else %} {{ user.username }}{% endif %} </label><br>
-                        {% endfor %}
-                    </div><hr>
-                {% endif %}
+                <div class="form-group mb-4">
+                    <h5 class="font-weight-bold">ADMINS:</h5>
+                    {% for user in form.admin %}
+                        {{ user }}
+                        <br>
+                    {% endfor %}
+
+                    {% for error in form.admin.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                <hr>
 
                 <div class="form-group mb-4">
                     <h5 class="font-weight-bold">PARTICIPANTS:</h5>
-                    {% for user in users %}
-                        <input type="checkbox" {% if user in conversation.participants.all %} checked {% endif %} value="{{ user.id }}" name="participants" id="participants">
-                        <img src="{{user.img.url}}" style='border-radius: 50%; max-height: 25px' alt="Admin's Img">
-                        <label for="participants" class="font-weight-bold">{{ user.username }}</label><br>
+                    {% for user in form.participants %}
+                        {{user}}
+                        <br>
+                    {% empty %}
+                        <p class="text-muted">Follow someone first to add them to a group.</p>
+                    {% endfor %}
+
+                    {% for error in form.participants.errors %}
+                        <div class="text-danger small">{{ error }}</div>
                     {% endfor %}
                 </div>
                 
                 <button type="submit" class="btn btn-primary w-100 py-2 font-weight-bold">Submit</button>
                 {% if pk %}
-                <button class="btn btn-danger mt-2 w-100 py-2 font-weight-bold"><a style='color:black' href="{% url 'delete-group' conversation.pk %}">Delete</a></button>
+                    <button class="btn btn-danger mt-2 w-100 py-2 font-weight-bold"><a style='color:black' href="{% url 'delete-group' conversation.pk %}">Delete</a></button>
                 {% endif %}
             </form>
         </div>

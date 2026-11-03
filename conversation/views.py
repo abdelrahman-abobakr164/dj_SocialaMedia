@@ -1,107 +1,102 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q, Prefetch, Count, Max, Case, When
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
 from django.contrib.auth import get_user_model
 from django.contrib import messages
 from django.db import transaction
-from datetime import datetime
 
-from conversation.forms import CreateForm
 from accounts.models import Follow
-from conversation.models import *
+from core.validations import *
+
 from conversation.utils import message_handler
-from core.utils import *
+from conversation.forms import CreateForm
+from conversation.models import *
+
+
+def only_admin(user, conversation):
+    return (
+        conversation.admin.count() == 1
+        and conversation.admin.filter(id=user.id).exists()
+    )
+
+
+def get_connection_ids(user, conversation=None):
+    accepted = Follow.objects.filter(status=Follow.Status.ACCEPTED)
+
+    followers = accepted.filter(following=user).values("follower_id")
+    followings = accepted.filter(follower=user).values("following_id")
+
+    condition = Q(pk__in=followers) | Q(pk__in=followings)
+
+    if conversation:
+        condition |= Q(pk__in=conversation.participants.values("pk"))
+
+    return get_user_model().objects.filter(condition).exclude(pk=user.pk)
 
 
 @login_required
 def group(request, pk=None):
-    User = get_user_model()
-    user_ids = set()
+    conversation = None
 
     if pk:
         conversation = get_object_or_404(
-            Conversation.objects.prefetch_related("participants"), pk=pk
+            Conversation.objects.prefetch_related("admin", "participants"), pk=pk
         )
 
-        if request.user not in conversation.admin.all():
-            messages.warning(request, "You'r not admin to do this")
+        if not conversation.admin.filter(pk=request.user.pk).exists():
+            messages.warning(request, "You're not an admin of this group.")
             return redirect("conversations")
 
-        for user in conversation.participants.all():
-            if user.id != request.user.id:
-                user_ids.add(user.id)
+    candidates = get_connection_ids(request.user, conversation)
 
-        form = CreateForm(instance=conversation)
-    else:
-        conversation = None
-        form = CreateForm()
-
-    following = Follow.objects.filter(
-        Q(follower=request.user.id, status=Follow.Status.ACCEPTED)
-        | Q(following=request.user.id, status=Follow.Status.ACCEPTED)
-    )
-
-    for f in following:
-        if f.follower_id != request.user.id:
-            user_ids.add(f.follower_id)
-        if f.following_id != request.user.id:
-            user_ids.add(f.following_id)
-
-    users = User.objects.filter(id__in=user_ids)
+    instance = conversation or Conversation(is_group=True)
 
     if request.method == "POST":
-        create_form = CreateForm(request.POST, instance=conversation)
-        participants = request.POST.getlist("participants")
-        admins = request.POST.getlist("admins", [request.user])
+        form = CreateForm(
+            request.POST, request.FILES, instance=instance, candidates=candidates
+        )
 
-        if create_form.is_valid():
+        with transaction.atomic():
+            if form.is_valid():
+                saved = form.save()
+                saved.participants.add(request.user)
+                saved.admin.add(request.user)
 
-            if not participants or participants == request.user.username:
-                messages.warning(request, "Please Select Participants")
-                return redirect("edit_group", conversation.pk)
-            with transaction.atomic():
-                form_save = create_form.save(commit=False)
-                form_save.is_group = True
-                form_save.save()
-
-                if pk == None:
-                    conversation = get_object_or_404(
-                        Conversation.objects.prefetch_related("participants", "admin"),
-                        group_name=form_save.group_name,
-                    )
-                conversation.admin.set(admins) if pk else None
-                conversation.admin.add(request.user)
-                conversation.participants.set(participants + admins)
-                conversation.participants.add(request.user)
-                conversation.save()
-
-                if pk:
-                    messages.success(
-                        request, "You'v been update Your Group Successfully!"
-                    )
-                else:
-                    messages.success(request, "Group Created Successfully!")
+                messages.success(
+                    request,
+                    f"{form.cleaned_data['group_name']} has been "
+                    f"{'created' if pk is None else 'updated'} successfully!",
+                )
                 return redirect("conversations")
-        else:
-            messages.error(request, f"Invalid form data ")
-            return redirect("conversations", conversation.pk)
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
+    else:
+        form = CreateForm(instance=instance, candidates=candidates)
 
-    context = {"users": users, "form": form, "conversation": conversation, "pk": pk}
+    context = {
+        "users": candidates,
+        "form": form,
+        "conversation": conversation,
+        "pk": pk,
+    }
     return render(request, "conversation/group.html", context)
 
 
 @login_required
 def leave(request, pk):
     group = get_object_or_404(Conversation, pk=pk)
+
+    if only_admin(request.user, group):
+        group.delete()
+
     if group.is_group and request.user in group.participants.all():
-        if request.user in group.admin.all() and request.user == group.admin.all():
-            group.delete()
-        else:
-            group.admin.remove(request.user)
         group.participants.remove(request.user)
+        group.admin.remove(request.user)
         group.save()
-        return redirect("conversations")
+
+    return redirect("conversations")
 
 
 @login_required
@@ -153,142 +148,90 @@ def conversations(request):
     )
 
     if request.method == "POST":
-        convid = request.POST.get("convid")
-        if convid:
-            conversation = get_object_or_404(Conversation, id=convid)
-
-            if conversation.is_group:
-                if request.user in conversation.participants.all():
-                    if request.user == conversation.admin.first():
-                        conversation.delete()
-                    else:
-                        (
-                            conversation.admin.remove(request.user)
-                            if request.user in conversation.admin.all()
-                            else None
-                        )
-                        conversation.participants.remove(request.user)
-                        conversation.save()
-                    return redirect("conversations")
-
-            ConvFilter = conversation.other_participants(request.user)
-            if ConvFilter.is_superuser == False:
-
-                UserStatus.objects.update_or_create(
-                    user=request.user,
-                    conversation=conversation,
-                    defaults={"status": "Block"},
-                )
-            else:
-                messages.warning(request, "You Can't Block This User")
-
-            return redirect("conversations")
+        conversation = get_object_or_404(
+            Conversation, id=request.POST.get("convid"), participants=request.user
+        )
+        block_action(request.user, conversation)
+        return redirect("conversations")
 
     return render(request, "conversation/conversations.html", {"Convs": Convs})
 
 
 @login_required
 def chat_room(request, pk):
-    try:
-        url = request.META.get("HTTP_REFERER")
-        chat = Conversation.objects.prefetch_related("participants", "admin").get(pk=pk)
+    chat = get_object_or_404(
+        Conversation.objects.prefetch_related("participants"), pk=pk
+    )
 
-        if request.user not in chat.participants.all():
-            return redirect("conversations")
-
-        other_user = chat.other_participants(request.user)
-
-        if chat.is_group:
-            unread_group_messages = Message.objects.filter(conversation=chat).exclude(
-                sender=request.user
-            )
-
-            for message in unread_group_messages:
-                message.mark_as_read_by_user(request.user)
-
-        else:
-            Message.objects.filter(
-                conversation=chat,
-                read=False,
-                sender=other_user,
-            ).update(read=True)
-
-        mutual_follow_exists = Follow.objects.filter(
-            Q(follower=request.user, following=other_user)
-            | Q(following=request.user, follower=other_user),
-            status=Follow.Status.ACCEPTED,
-        )
-
-        is_blocked = UserStatus.objects.filter(
-            conversation=chat, status="Block"
-        ).exists()
-
-        if is_blocked:
-            CheckUserStatus = True
-            messages.warning(request, "This User In Block List")
-
-        elif not mutual_follow_exists.exists():
-            CheckUserStatus = True
-            messages.warning(
-                request,
-                "This User Is No Longer Your Friend You Can't Chat With Him/her",
-            )
-
-        else:
-            CheckUserStatus = False
-
-        msgs = (
-            Message.objects.select_related("conversation", "sender")
-            .filter(conversation=chat)
-            .order_by("timestamp")
-        )
-
-        if request.method == "POST":
-            if not is_blocked and mutual_follow_exists:
-                files = request.FILES.getlist("attachment")
-                content = request.POST.get("content", "").strip()
-
-                try:
-                    if content and not files:
-                        message = Message.objects.create(
-                            conversation=chat,
-                            content=content,
-                            sender=request.user,
-                        )
-                    elif files or content:
-                        for file in files:
-                            if file_validation(file):
-                                message = Message.objects.create(
-                                    conversation=chat,
-                                    content=content if content else "",
-                                    sender=request.user,
-                                )
-                                MessageAttachment.objects.create(
-                                    file=file,
-                                    message=message,
-                                    file_name=file.name,
-                                    file_type=file.content_type.split("/")[0],
-                                )
-
-                    else:
-                        messages.error(request, "Don't Mess")
-                        return redirect(url)
-
-                    message_handler(message)
-                    chat.updated_at = datetime.now()
-                    chat.save()
-
-                except Exception as e:
-                    messages.error(request, f"{str(e)}")
-                    return redirect(url)
-            else:
-                messages.warning(request, "you're not friends any more")
-                return redirect(url)
-
-        context = {"chat": chat, "msgs": msgs, "CheckUserStatus": CheckUserStatus}
-        return render(request, "conversation/chat.html", context)
-    except Conversation.DoesNotExist:
+    if request.user not in chat.participants.all():
         return redirect("conversations")
+
+    other_user = chat.other_participants(request.user)
+
+    chat.mark_as_read_by(request.user)
+
+    follow_exists = Follow.objects.filter(
+        Q(follower=request.user, following=other_user)
+        | Q(following=request.user, follower=other_user),
+        status=Follow.Status.ACCEPTED,
+    ).exists()
+
+    is_blocked = UserStatus.objects.filter(conversation=chat, status="Block").exists()
+
+    if is_blocked or not follow_exists:
+        CheckUserStatus = True
+        messages.warning(request, "You Can't Message This User")
+
+    else:
+        CheckUserStatus = False
+
+    msgs = (
+        Message.objects.select_related("conversation", "sender")
+        .filter(conversation=chat)
+        .order_by("timestamp")
+    )
+
+    if request.method == "POST":
+        if not is_blocked and follow_exists:
+            create_message(request, chat)
+
+    context = {"chat": chat, "msgs": msgs, "CheckUserStatus": CheckUserStatus}
+    return render(request, "conversation/chat.html", context)
+
+
+def create_message(request, chat):
+    url = request.META.get("HTTP_REFERER")
+
+    files = request.FILES.getlist("attachment")
+    content = request.POST.get("content", "").strip()
+
+    if not files and not content:
+        messages.error(request, "content and file/s are required")
+        return redirect(url)
+
+    try:
+        validated = [(file, file_validation(file)) for file in files]
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+        return redirect(url)
+
+    with transaction.atomic():
+        message = Message.objects.create(
+            conversation=chat,
+            content=content,
+            sender=request.user,
+        )
+        for file, file_type in validated:
+            MessageAttachment.objects.create(
+                file=file,
+                message=message,
+                file_name=file.name,
+                file_type=file_type,
+            )
+
+        transaction.on_commit(lambda: message_handler(message))
+        chat.save()
+    return redirect(url)
 
 
 @login_required
@@ -298,38 +241,40 @@ def delete_chat(request, pk):
 
 
 @login_required
-def block(request):
-    user_block_status = UserStatus.objects.filter(
-        status="Block", user=request.user, conversation__participants=request.user
-    )
-
-    blocked_conversations = (
-        Conversation.objects.prefetch_related("participants", "admin")
-        .prefetch_related(
-            Prefetch(
-                "conversation_status",
-                queryset=user_block_status,
-                to_attr="user_block_status",
-            ),
-        )
-        .filter(
-            conversation_status__user=request.user,
-            conversation_status__status="Block",
-            participants=request.user,
-        )
-        .order_by("-messages__timestamp")
-        .distinct()
-    )
+def block_page(request):
+    blocked_conversations = Conversation.objects.filter(
+        participants=request.user,
+        conversation_status__user=request.user,
+        conversation_status__status="Block",
+    ).prefetch_related("participants", "messages")
 
     if request.method == "POST":
-        convid = request.POST.get("convid")
-
-        if convid:
-            UserStatus.objects.get(user=request.user, conversation__id=convid).delete()
-            return redirect(request.META.get("HTTP_REFERER"))
+        conversation = get_object_or_404(
+            Conversation, id=request.POST.get("convid"), participants=request.user
+        )
+        block_action(request.user, conversation)
+        return redirect("block")
 
     context = {
         "Convs": blocked_conversations,
-        "user_status": user_block_status,
     }
     return render(request, "conversation/block.html", context)
+
+
+def block_action(user, conversation):
+    with transaction.atomic():
+        if not conversation.is_group:
+            status_obj, created = UserStatus.objects.get_or_create(
+                user=user,
+                conversation=conversation,
+                defaults={"status": "Block"},
+            )
+
+            if not created:
+                status_obj.delete()
+
+        elif only_admin(user, conversation):
+            conversation.delete()
+        else:
+            conversation.admin.remove(user)
+            conversation.participants.remove(user)

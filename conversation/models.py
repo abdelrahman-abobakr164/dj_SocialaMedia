@@ -1,8 +1,8 @@
 import uuid
 from django.db import models
+from django.db.models import Count
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxLengthValidator
-
 
 User = get_user_model()
 
@@ -10,15 +10,15 @@ User = get_user_model()
 class Conversation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     participants = models.ManyToManyField(User, related_name="conversations")
-    admin = models.ManyToManyField(User, related_name="conversation_admin")
+    admin = models.ManyToManyField(User, related_name="conversation_admin", blank=True)
     is_group = models.BooleanField(default=False)
     group_name = models.CharField(max_length=100, null=True, blank=True, unique=True)
     group_image = models.ImageField(upload_to="group_images/", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def other_participants(self, user):
-        return self.participants.exclude(id=user.id).first()
+    class Meta:
+        ordering = ["-updated_at"]
 
     def __str__(self):
         if self.is_group:
@@ -31,8 +31,35 @@ class Conversation(models.Model):
 
         return reverse("conversation", kwargs={"pk": self.id})
 
-    class Meta:
-        ordering = ["-updated_at"]
+    def other_participants(self, user):
+        return self.participants.exclude(id=user.id).first()
+
+    def recipients_for(self, user):
+        return self.participants.exclude(id=user.id)
+
+    def mark_as_read_by(self, user):
+        unread = Message.objects.filter(conversation=self).exclude(sender=user)
+
+        if not self.is_group:
+            unread.filter(read=False).update(read=True)
+            return
+
+        message_ids = list(unread.exclude(read_by=user).values_list("id", flat=True))
+
+        if not message_ids:
+            return
+
+        user.read_messages.add(*message_ids)
+
+        needed = self.participants.count() - 1
+
+        fully_read_ids = list(
+            Message.objects.filter(id__in=message_ids)
+            .annotate(readers=Count("read_by"))
+            .filter(readers__gte=needed)
+            .values_list("id", flat=True)
+        )
+        Message.objects.filter(id__in=fully_read_ids).update(read=True)
 
 
 class Message(models.Model):
@@ -52,10 +79,6 @@ class Message(models.Model):
 
     class Meta:
         ordering = ["-timestamp"]
-
-    def mark_as_read_by_user(self, user):
-        if user not in self.read_by.all():
-            self.read_by.add(user)
 
 
 class MessageAttachment(models.Model):

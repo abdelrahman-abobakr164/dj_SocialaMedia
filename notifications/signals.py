@@ -3,6 +3,9 @@ from django.db.models.signals import post_save
 from notifications.models import Notification
 from .utils import send_notification_to_user
 from django.dispatch import receiver
+from django.db import transaction
+from functools import partial
+
 from accounts.models import Follow
 from conversation.models import *
 from core.models import *
@@ -10,31 +13,28 @@ from core.models import *
 
 @receiver(post_save, sender=Follow)
 def create_follow_notification(sender, instance, created, **kwargs):
-    content_type = ContentType.objects.get_for_model(Follow)
 
     if created:
-        ntype = "Follow Request"
-        if not instance.following.check_followers or instance.follower.is_admin:
-            ntype = "New Follower"
+        requires_approval = instance.following.check_followers
+        ntype = "Follow Request" if requires_approval else "New Follower"
+        actor, recipient = instance.follower, instance.following
 
-        notification = Notification.objects.create(
-            actor=instance.follower,
-            recipient=instance.following,
-            content_type=content_type,
-            object_id=str(instance.id),
-            ntype=ntype,
-        )
-        send_notification_to_user(notification)
+    elif instance.status == Follow.Status.ACCEPTED:
+        actor, recipient = instance.following, instance.follower
+        ntype = "Follow Accepted"
 
-    elif instance.status == "accepted":
-        notification = Notification.objects.create(
-            actor=instance.following,
-            recipient=instance.follower,
-            content_type=content_type,
-            object_id=str(instance.id),
-            ntype="Follow Accepted",
-        )
-        send_notification_to_user(notification)
+    else:
+        return
+
+    notification = Notification.objects.create(
+        actor=actor,
+        recipient=recipient,
+        content_type=ContentType.objects.get_for_model(Follow),
+        object_id=str(instance.id),
+        ntype=ntype,
+    )
+
+    transaction.on_commit(lambda: send_notification_to_user(notification))
 
 
 @receiver(post_save, sender=Comment)
@@ -48,7 +48,7 @@ def create_comment_notification(sender, instance, created, **kwargs):
             object_id=str(instance.post.id),
             ntype="Comment",
         )
-        send_notification_to_user(notification)
+        transaction.on_commit(lambda: send_notification_to_user(notification))
 
 
 @receiver(post_save, sender=Like)
@@ -68,16 +68,18 @@ def create_like_notification(sender, instance, created, **kwargs):
                 object_id=str(content_object.id),
                 ntype="Like",
             )
-            send_notification_to_user(notification)
+            transaction.on_commit(lambda: send_notification_to_user(notification))
 
 
 @receiver(post_save, sender=Message)
 def create_message_notification(sender, instance, created, **kwargs):
-    if created:
+    if not created:
+        return
+    for recipient in instance.conversation.recipients_for(instance.sender):
         notification = Notification.objects.create(
             actor=instance.sender,
-            recipient=instance.conversation.other_participants(instance.sender),
+            recipient=recipient,
             content_object=instance,
             ntype="Message",
         )
-        send_notification_to_user(notification)
+        transaction.on_commit(partial(send_notification_to_user, notification))
